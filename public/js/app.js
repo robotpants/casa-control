@@ -148,25 +148,7 @@ const App = {
     section.innerHTML = `
       <div class="section-label">Favorites</div>
       <div class="light-list">
-        ${favs.map(a => {
-          const isOn = State.isOn(a);
-          const status = UI.deviceStatus(a);
-          const type = State.getType(a);
-          const room = State.rooms.find(r => (r.deviceIds || []).includes(a.uniqueId));
-          return `
-            <div class="dev-item neu-raised">
-              <div class="di-icon ${isOn ? 'on' : ''}">${ic(UI.deviceIcon(a), 16)}</div>
-              <div class="di-info">
-                <div class="di-name">${a.serviceName}</div>
-                <div class="di-room">${room?.name || ''} · ${status}</div>
-              </div>
-              ${type !== 'sensor' && type !== 'remote' ? `
-                <div class="toggle ${isOn ? 'on' : ''}"
-                     onclick="Devices.toggle('${a.uniqueId}');App.renderFavorites()">
-                  <div class="knob"></div>
-                </div>` : ''}
-            </div>`;
-        }).join('')}
+        ${favs.map(a => Devices.cardHTML(a)).join('')}
       </div>`;
   },
 
@@ -190,8 +172,8 @@ const App = {
 
     const groupDefs = [
       { key: 'light', label: 'Lights', icon: 'lightbulb' },
-      { key: 'fan', label: 'Fans', icon: 'fan' },
-      { key: 'purifier', label: 'Air Purifiers', icon: 'wind' },
+      { key: 'fan', label: 'Fans', icon: 'wind' },
+      { key: 'purifier', label: 'Air Purifiers', icon: 'airVent' },
       { key: 'heater', label: 'Heaters', icon: 'flame' },
       { key: 'switch', label: 'Switches', icon: 'plug' },
       { key: 'sensor', label: 'Sensors', icon: 'thermometer' },
@@ -220,24 +202,9 @@ const App = {
             <h3>${g.label}</h3>
             <span class="dg-count">${groups[g.key].filter(a => State.isOn(a)).length}/${groups[g.key].length} on</span>
           </div>
-          ${groups[g.key].map(a => {
-            const isOn = State.isOn(a);
-            const type = State.getType(a);
-            const room = State.rooms.find(r => (r.deviceIds || []).includes(a.uniqueId));
-            return `
-              <div class="dev-item neu-raised">
-                <div class="di-icon ${isOn ? 'on' : ''}">${ic(UI.deviceIcon(a), 16)}</div>
-                <div class="di-info">
-                  <div class="di-name">${a.serviceName}</div>
-                  <div class="di-room">${room?.name || 'Unassigned'} · ${UI.deviceStatus(a)}</div>
-                </div>
-                ${type !== 'sensor' && type !== 'remote' ? `
-                  <div class="toggle ${isOn ? 'on' : ''}"
-                       onclick="Devices.toggle('${a.uniqueId}');App.renderDevicesView()">
-                    <div class="knob"></div>
-                  </div>` : ''}
-              </div>`;
-          }).join('')}
+          <div class="light-list">
+            ${groups[g.key].map(a => Devices.cardHTML(a)).join('')}
+          </div>
         </div>`).join('')}`;
   },
 

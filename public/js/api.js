@@ -15,9 +15,10 @@ const API = {
   },
 
   // Set a characteristic value on an accessory
+  // uniqueId is the Homebridge accessory uniqueId (hex string)
   // charType is the characteristic type name (e.g. "On", "Brightness", "RotationSpeed")
-  async setCharacteristic(aid, charType, value) {
-    const res = await fetch(`/api/accessories/${aid}`, {
+  async setCharacteristic(uniqueId, charType, value) {
+    const res = await fetch(`/api/accessories/${uniqueId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -25,14 +26,14 @@ const API = {
         value
       })
     });
-    if (!res.ok) throw new Error(`Failed to set characteristic ${charType} on ${aid}`);
+    if (!res.ok) throw new Error(`Failed to set characteristic ${charType} on ${uniqueId}`);
     return res.json();
   },
 
   // Get a single accessory
-  async getAccessory(aid) {
-    const res = await fetch(`/api/accessories/${aid}`);
-    if (!res.ok) throw new Error(`Failed to fetch accessory ${aid}`);
+  async getAccessory(uniqueId) {
+    const res = await fetch(`/api/accessories/${uniqueId}`);
+    if (!res.ok) throw new Error(`Failed to fetch accessory ${uniqueId}`);
     return res.json();
   },
 
@@ -44,7 +45,7 @@ const API = {
     const chars = accessory.serviceCharacteristics || [];
     const onChar = chars.find(c => c.type === 'On' || c.type === 'Active');
     if (!onChar) throw new Error('No On/Active characteristic found');
-    return this.setCharacteristic(accessory.aid, onChar.type, value ? 1 : 0);
+    return this.setCharacteristic(accessory.uniqueId, onChar.type, value ? 1 : 0);
   },
 
   // Set brightness (0-100)
@@ -52,7 +53,7 @@ const API = {
     const chars = accessory.serviceCharacteristics || [];
     const char = chars.find(c => c.type === 'Brightness');
     if (!char) throw new Error('No Brightness characteristic found');
-    return this.setCharacteristic(accessory.aid, char.type, value);
+    return this.setCharacteristic(accessory.uniqueId, char.type, value);
   },
 
   // Set fan rotation speed (0-100)
@@ -60,7 +61,7 @@ const API = {
     const chars = accessory.serviceCharacteristics || [];
     const char = chars.find(c => c.type === 'RotationSpeed');
     if (!char) throw new Error('No RotationSpeed characteristic found');
-    return this.setCharacteristic(accessory.aid, char.type, value);
+    return this.setCharacteristic(accessory.uniqueId, char.type, value);
   },
 
   // ── Weather (Open-Meteo, no key needed) ──────────

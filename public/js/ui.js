@@ -150,8 +150,8 @@ const UI = {
     const map = {
       light: 'lightbulb',
       switch: 'plug',
-      fan: 'fan',
-      purifier: 'wind',
+      fan: 'wind',
+      purifier: 'airVent',
       heater: 'flame',
       sensor: 'thermometer',
       remote: 'radio',
@@ -159,7 +159,7 @@ const UI = {
     if (map[type]) return map[type];
     // Fallback: infer icon from humanType for variants not in typeMap
     const ht = accessory.humanType || '';
-    if (/Fan/i.test(ht)) return 'fan';
+    if (/Fan/i.test(ht)) return 'wind';
     if (/Light|Bulb/i.test(ht)) return 'lightbulb';
     if (/Purifier/i.test(ht)) return 'wind';
     if (/Heater|Cooler/i.test(ht)) return 'flame';

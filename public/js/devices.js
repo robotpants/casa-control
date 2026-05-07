@@ -197,7 +197,7 @@ const Devices = {
       document.removeEventListener('touchend', finish);
 
       try {
-        await API.setCharacteristic(aid, charType, lastPct);
+        await API.setCharacteristic(uid, charType, lastPct);
         State.updateCharValue(aid, iid, lastPct);
       } catch (err) {
         UI.toast('Failed to update');

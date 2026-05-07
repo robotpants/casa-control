@@ -156,7 +156,16 @@ const UI = {
       sensor: 'thermometer',
       remote: 'radio',
     };
-    return map[type] || 'zap';
+    if (map[type]) return map[type];
+    // Fallback: infer icon from humanType for variants not in typeMap
+    const ht = accessory.humanType || '';
+    if (/Fan/i.test(ht)) return 'fan';
+    if (/Light|Bulb/i.test(ht)) return 'lightbulb';
+    if (/Purifier/i.test(ht)) return 'wind';
+    if (/Heater|Cooler/i.test(ht)) return 'flame';
+    if (/Sensor|Temperature|Humidity/i.test(ht)) return 'thermometer';
+    if (/Switch/i.test(ht)) return 'plug';
+    return 'zap';
   },
 
   // ── Greeting ───────────────────────────────────────

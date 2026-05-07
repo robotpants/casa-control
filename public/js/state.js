@@ -166,6 +166,14 @@ const State = {
     // Fetch live accessories
     this.accessories = await API.getAccessories();
 
+    // Deduplicate by uniqueId (Homebridge sometimes returns duplicates)
+    const seen = new Set();
+    this.accessories = this.accessories.filter(a => {
+      if (seen.has(a.uniqueId)) return false;
+      seen.add(a.uniqueId);
+      return true;
+    });
+
     // Filter out junk types
     this.accessories = this.accessories.filter(a => this.getType(a) !== null);
 

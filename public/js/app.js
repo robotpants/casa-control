@@ -30,8 +30,15 @@ const App = {
   // ── Refresh accessory state ────────────────────────
   async refresh() {
     try {
-      State.accessories = await API.getAccessories();
-      State.accessories = State.accessories.filter(a => State.getType(a) !== null);
+      const fetched = await API.getAccessories();
+      const seen = new Set();
+      State.accessories = fetched
+        .filter(a => {
+          if (seen.has(a.uniqueId)) return false;
+          seen.add(a.uniqueId);
+          return true;
+        })
+        .filter(a => State.getType(a) !== null);
       this.updateActiveView();
     } catch (e) {
       console.warn('Refresh failed:', e.message);

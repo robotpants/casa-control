@@ -111,17 +111,17 @@ const UI = {
 
     if (type === 'light') {
       const brightness = State.getCharValue(accessory, 'Brightness');
-      return brightness !== null ? `${brightness}%` : 'On';
+      return brightness !== null ? `${Math.round(brightness)}%` : 'On';
     }
 
     if (type === 'fan') {
       const speed = State.getCharValue(accessory, 'RotationSpeed');
-      return speed !== null ? `${speed}%` : 'On';
+      return speed !== null ? `${Math.round(speed)}%` : 'On';
     }
 
     if (type === 'purifier') {
       const speed = State.getCharValue(accessory, 'RotationSpeed');
-      return speed !== null ? `Fan ${speed}%` : 'On';
+      return speed !== null ? `Fan ${Math.round(speed)}%` : 'On';
     }
 
     if (type === 'heater') {

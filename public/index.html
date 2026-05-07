@@ -1,1 +1,144 @@
-<!-- Main HTML entry point for the Casa Control web app -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Casa Control</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- Loading state -->
+  <div id="loadingState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:var(--text-muted)">
+    <div style="font-size:48px">⌂</div>
+    <div style="font-family:var(--font-display);font-size:16px">Connecting to Homebridge...</div>
+  </div>
+
+  <!-- Error state -->
+  <div id="errorState" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:var(--danger);padding:40px;text-align:center">
+    <div style="font-size:48px">⚠</div>
+    <div style="font-family:var(--font-display);font-size:16px"></div>
+  </div>
+
+  <!-- ── Home View ── -->
+  <div class="view" id="homeView">
+    <div class="home-header">
+      <div class="greeting">
+        <h1 id="greetingText">Good Evening</h1>
+        <div class="sub">Nick's Home</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="header-btn neu-btn" onclick="Rooms.toggleEditMode()" id="editBtn"></div>
+        <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon></div>
+      </div>
+    </div>
+
+    <div class="stagger">
+      <!-- Status row -->
+      <div class="status-row">
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-t"></div>
+          <div class="status-value">72°</div>
+          <div class="status-label">Inside</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-out"></div>
+          <div class="status-value" id="outsideTemp">--°</div>
+          <div class="status-label" id="outsideLabel">Outside</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-s"></div>
+          <div class="status-value" style="color:var(--success)">OK</div>
+          <div class="status-label">Security</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-l"></div>
+          <div class="status-value" id="activeLightCount">0</div>
+          <div class="status-label">Lights On</div>
+        </div>
+      </div>
+
+      <!-- Favorites -->
+      <div id="favSection" style="display:none"></div>
+
+      <!-- Rooms -->
+      <div class="section-label">Rooms</div>
+      <div class="room-grid" id="roomGrid"></div>
+    </div>
+  </div>
+
+  <!-- ── Room View ── -->
+  <div class="view" id="roomView">
+    <div class="room-header">
+      <div class="back-btn neu-btn" onclick="App.goBack()" id="backBtn">
+        <!-- chevLeft injected by app.js -->
+      </div>
+      <div class="room-title-block">
+        <h1 id="rvTitle"></h1>
+        <div class="sub" id="rvSub"></div>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="roomContent"></div>
+  </div>
+
+  <!-- ── Devices View ── -->
+  <div class="view" id="devicesView">
+    <div class="room-header">
+      <div class="room-title-block" style="margin-left:4px">
+        <h1>All Devices</h1>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="devicesContent"></div>
+  </div>
+
+  <!-- ── Settings View ── -->
+  <div class="view" id="settingsView">
+    <div class="room-header">
+      <div class="room-title-block" style="margin-left:4px">
+        <h1>Settings</h1>
+        <div class="sub">Preferences & system</div>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="settingsContent"></div>
+  </div>
+
+  <!-- ── Bottom Nav ── -->
+  <div class="bottom-nav" id="bottomNav"></div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)UI.closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text-primary);color:var(--bg);padding:10px 24px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;pointer-events:none;z-index:300;font-family:var(--font-sans)"></div>
+
+<!-- Scripts -->
+<script src="icons/icons.js"></script>
+<script src="js/api.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/devices.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  // Set back button icon after scripts load
+  document.addEventListener('DOMContentLoaded', () => {
+    const back = document.getElementById('backBtn');
+    if (back) back.innerHTML = ic('chevLeft', 20);
+  });
+</script>
+
+</body>
+</html>

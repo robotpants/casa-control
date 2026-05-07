@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 /* ── Casa Control · server.js ─────────────────────────
    Express server. Serves static dashboard and proxies
    all /api calls to Homebridge. Handles auth internally.

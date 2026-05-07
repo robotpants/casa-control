@@ -83,15 +83,20 @@ const Devices = {
     if (type === 'light') {
       const brightness = State.getCharValue(accessory, 'Brightness') ?? 100;
       const isOn = State.isOn(accessory);
-      html += this.sliderHTML(uid, 'brightness', 'Bright', isOn ? brightness : 0, accessory.aid, accessory.iid);
+      const char = accessory.serviceCharacteristics.find(c => c.type === 'Brightness');
+      if (char) {
+        html += this.sliderHTML(uid, 'brightness', 'Bright', isOn ? brightness : 0, accessory.aid, 'Brightness', char.iid);
+      }
     }
 
     // Speed slider for fans and purifiers
     if (type === 'fan' || type === 'purifier') {
       const speed = State.getCharValue(accessory, 'RotationSpeed') ?? 50;
       const char = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
-      const step = char?.minStep || 1;
-      html += this.sliderHTML(uid, 'speed', 'Speed', speed, accessory.aid, char?.iid, step);
+      if (char) {
+        const step = char.minStep || 1;
+        html += this.sliderHTML(uid, 'speed', 'Speed', speed, accessory.aid, 'RotationSpeed', char.iid, step);
+      }
     }
 
     // Filter life for purifiers
@@ -113,12 +118,13 @@ const Devices = {
   },
 
   // ── Slider HTML ────────────────────────────────────
-  sliderHTML(uid, prop, label, value, aid, iid, step = 1) {
+  sliderHTML(uid, prop, label, value, aid, charType, iid, step = 1) {
     return `
       <div class="slider-row">
         <div class="slider-label">${label}</div>
         <div class="slider-track"
-             data-uid="${uid}" data-prop="${prop}" data-aid="${aid}" data-iid="${iid}" data-step="${step}"
+             data-uid="${uid}" data-prop="${prop}" data-aid="${aid}"
+             data-ctype="${charType}" data-iid="${iid}" data-step="${step}"
              onmousedown="Devices.startSlide(event)"
              ontouchstart="Devices.startSlide(event)">
           <div class="slider-fill ${prop === 'brightness' ? 'brightness' : 'speed'}"
@@ -162,6 +168,7 @@ const Devices = {
     const uid = track.dataset.uid;
     const prop = track.dataset.prop;
     const aid = parseInt(track.dataset.aid);
+    const charType = track.dataset.ctype;
     const iid = parseInt(track.dataset.iid);
     const step = parseFloat(track.dataset.step) || 1;
 
@@ -190,7 +197,7 @@ const Devices = {
       document.removeEventListener('touchend', finish);
 
       try {
-        await API.setCharacteristic(aid, iid, lastPct);
+        await API.setCharacteristic(aid, charType, lastPct);
         State.updateCharValue(aid, iid, lastPct);
       } catch (err) {
         UI.toast('Failed to update');

@@ -15,16 +15,17 @@ const API = {
   },
 
   // Set a characteristic value on an accessory
-  async setCharacteristic(aid, iid, value) {
+  // charType is the characteristic type name (e.g. "On", "Brightness", "RotationSpeed")
+  async setCharacteristic(aid, charType, value) {
     const res = await fetch(`/api/accessories/${aid}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        characteristicType: iid,
+        characteristicType: charType,
         value
       })
     });
-    if (!res.ok) throw new Error(`Failed to set characteristic ${iid} on ${aid}`);
+    if (!res.ok) throw new Error(`Failed to set characteristic ${charType} on ${aid}`);
     return res.json();
   },
 
@@ -43,7 +44,7 @@ const API = {
     const chars = accessory.serviceCharacteristics || [];
     const onChar = chars.find(c => c.type === 'On' || c.type === 'Active');
     if (!onChar) throw new Error('No On/Active characteristic found');
-    return this.setCharacteristic(accessory.aid, onChar.iid, value ? 1 : 0);
+    return this.setCharacteristic(accessory.aid, onChar.type, value ? 1 : 0);
   },
 
   // Set brightness (0-100)
@@ -51,7 +52,7 @@ const API = {
     const chars = accessory.serviceCharacteristics || [];
     const char = chars.find(c => c.type === 'Brightness');
     if (!char) throw new Error('No Brightness characteristic found');
-    return this.setCharacteristic(accessory.aid, char.iid, value);
+    return this.setCharacteristic(accessory.aid, char.type, value);
   },
 
   // Set fan rotation speed (0-100)
@@ -59,7 +60,7 @@ const API = {
     const chars = accessory.serviceCharacteristics || [];
     const char = chars.find(c => c.type === 'RotationSpeed');
     if (!char) throw new Error('No RotationSpeed characteristic found');
-    return this.setCharacteristic(accessory.aid, char.iid, value);
+    return this.setCharacteristic(accessory.aid, char.type, value);
   },
 
   // ── Weather (Open-Meteo, no key needed) ──────────

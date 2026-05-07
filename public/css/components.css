@@ -1,1 +1,437 @@
-/* Component styles: buttons, cards, sliders, toggles, and other UI elements */
+/* ── Casa Control · components.css ───────────────────
+   All UI components: cards, toggles, sliders, modals,
+   buttons, chips. No layout, no variables.
+   ───────────────────────────────────────────────────── */
+
+/* ── Neumorphic primitives ────────────────────────────── */
+.neu-raised {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--neu-raised);
+  border: 1px solid transparent;
+}
+
+[data-theme="dark"] .neu-raised {
+  background: var(--surface-gradient);
+  border-color: rgba(255,255,255,.07);
+}
+
+.neu-pressed {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--neu-pressed);
+}
+
+/* ── Neu button (circular icon button) ────────────────── */
+.neu-btn {
+  background: var(--surface);
+  border: none;
+  border-radius: 50%;
+  box-shadow: var(--neu-raised-sm);
+  cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.neu-btn:active { box-shadow: var(--neu-pressed); transform: scale(.96); }
+.neu-btn.active { color: var(--accent); box-shadow: var(--neu-pressed); }
+
+[data-theme="dark"] .neu-btn { background: var(--surface-gradient); box-shadow: var(--neu-raised-sm); }
+[data-theme="dark"] .neu-btn:active,
+[data-theme="dark"] .neu-btn.active { background: var(--surface); box-shadow: var(--neu-pressed); }
+
+/* ── Toggle ───────────────────────────────────────────── */
+.toggle {
+  width: 48px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  position: relative;
+  cursor: pointer;
+  box-shadow: var(--neu-pressed);
+  background: #c4c7d4;
+  transition: background var(--dur-base), box-shadow var(--dur-base);
+  flex-shrink: 0;
+}
+
+.toggle.on {
+  background: var(--accent);
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,.15), 0 0 12px var(--accent-glow);
+}
+
+.toggle .knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 1px 1px 3px rgba(0,0,0,.25);
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.toggle.on .knob { transform: translateX(22px); }
+
+[data-theme="dark"] .toggle:not(.on) {
+  background: #3a3c48;
+  box-shadow: inset 4px 4px 8px rgba(0,0,0,.6), inset -4px -4px 8px rgba(60,63,78,.12);
+}
+
+/* ── Room card ────────────────────────────────────────── */
+.room-card {
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: transform var(--dur-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.room-card:active { transform: scale(.97); }
+.room-card .room-icon-wrap { font-size: 26px; margin-bottom: 10px; display: block; color: var(--text-secondary); }
+.room-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.room-card .room-sub { font-size: 11px; color: var(--text-secondary); }
+
+/* Room active dot */
+@keyframes room-dot-pulse {
+  0%,100% { box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px rgba(232,101,58,.25), 0 0 14px 2px rgba(232,101,58,.55); }
+  50%      { box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px rgba(232,101,58,.1),  0 0 20px 4px rgba(232,101,58,.3); }
+}
+
+.room-card .room-active-dot {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px rgba(232,101,58,.25), 0 0 14px 2px rgba(232,101,58,.55);
+  animation: room-dot-pulse 2.4s ease-in-out infinite;
+}
+
+.room-card.inactive .room-active-dot {
+  background: var(--text-muted);
+  box-shadow: 0 0 0 3px var(--surface), inset 1px 1px 2px rgba(0,0,0,.15);
+  animation: none;
+}
+
+/* Edit mode */
+.room-card .delete-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+  display: none;
+  z-index: 5;
+  color: var(--danger);
+}
+
+.room-card .edit-room-btn {
+  position: absolute;
+  top: 10px; left: 10px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+  display: none;
+  z-index: 5;
+  color: var(--accent);
+}
+
+.room-card.editing .delete-btn,
+.room-card.editing .edit-room-btn { display: flex; }
+
+.room-card.editing { animation: wiggle .3s infinite alternate; }
+@keyframes wiggle {
+  from { transform: rotate(-.5deg); }
+  to   { transform: rotate(.5deg); }
+}
+
+/* Add room card */
+.add-room-card {
+  padding: 18px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--text-muted);
+  gap: 8px;
+  border: 2px dashed var(--text-muted);
+  background: transparent;
+  box-shadow: none;
+  border-radius: var(--radius);
+  transition: all var(--dur-base);
+}
+
+.add-room-card:active { transform: scale(.97); border-color: var(--accent); color: var(--accent); }
+.add-room-card span { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+/* ── Light card ───────────────────────────────────────── */
+.light-card { padding: 16px 18px; }
+.light-card.offline { opacity: 0.5; }
+
+.light-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.light-indicator {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: var(--neu-pressed);
+  transition: all var(--dur-base);
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.light-indicator.on {
+  color: var(--accent);
+  box-shadow: var(--neu-pressed), 0 0 12px var(--accent-glow);
+}
+
+[data-theme="dark"] .light-indicator { box-shadow: var(--neu-pressed); }
+
+.light-info { flex: 1; min-width: 0; }
+.light-name { font-size: 14px; font-weight: 600; }
+.light-status { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+/* Expand */
+.light-controls {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .35s, padding .35s;
+}
+
+.light-card.expanded .light-controls {
+  max-height: 300px;
+  padding: 14px 0 4px;
+}
+
+.expand-btn {
+  width: 28px; height: 28px;
+  font-size: 12px;
+  transition: transform var(--dur-base);
+  flex-shrink: 0;
+}
+
+.light-card.expanded .expand-btn { transform: rotate(180deg); }
+
+/* ── Sliders ──────────────────────────────────────────── */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.slider-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.slider-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  box-shadow: inset 2px 2px 4px var(--shadow-inset-dark), inset -2px -2px 4px var(--shadow-inset-light);
+  position: relative;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .slider-track {
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,.7), inset -3px -3px 6px rgba(60,63,78,.1);
+}
+
+.slider-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .15s;
+  position: relative;
+}
+
+.slider-fill.brightness {
+  background: linear-gradient(90deg, var(--accent), #f0a050);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.slider-fill.speed {
+  background: linear-gradient(90deg, #3a8ee8, #3abf7a);
+  box-shadow: 0 0 8px rgba(58,142,232,0.35);
+}
+
+.slider-knob {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 3px 3px 8px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
+  position: absolute;
+  top: 50%; right: -10px;
+  transform: translateY(-50%);
+  cursor: grab;
+}
+
+[data-theme="dark"] .slider-knob {
+  box-shadow: var(--neu-raised-sm);
+}
+
+.slider-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Status pill ──────────────────────────────────────── */
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.status-pill.ok  { background: rgba(58,191,122,.18); color: #1f7a4a; }
+.status-pill.alert { background: rgba(232,74,58,.18); color: #a32f23; }
+.status-pill.warn  { background: rgba(232,184,58,.18); color: #8a6c1f; }
+
+/* ── Modal ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: var(--max-app-w);
+  padding: 28px 24px 36px;
+  box-shadow: 0 -10px 40px rgba(0,0,0,.3);
+  animation: slideUp var(--dur-base) var(--ease-out);
+}
+
+[data-theme="dark"] .modal {
+  background: #2b2d37;
+  border: 1px solid rgba(255,255,255,.07);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.modal h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+
+.modal-field { margin-bottom: 18px; }
+.modal-field label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--surface);
+  box-shadow: var(--neu-pressed);
+  outline: none;
+}
+
+.modal-input:focus {
+  box-shadow: var(--neu-pressed), 0 0 0 2px var(--accent);
+}
+
+.modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+
+.modal-btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-btn.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px var(--accent-glow); }
+.modal-btn.primary:active { transform: scale(.97); }
+.modal-btn.secondary { background: var(--surface); color: var(--text-secondary); box-shadow: var(--neu-raised-sm); }
+.modal-btn.danger { background: var(--danger); color: #fff; }
+.modal-btn.danger:active { transform: scale(.97); }
+
+/* ── Icon grid (modal) ────────────────────────────────── */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.icon-option {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  cursor: pointer;
+  background: var(--surface);
+  box-shadow: var(--neu-raised-sm);
+  color: var(--text-secondary);
+  border: 2px solid transparent;
+}
+
+.icon-option:active,
+.icon-option.selected {
+  box-shadow: var(--neu-pressed);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Tablet modal ─────────────────────────────────────── */
+@media (min-width: 768px) {
+  .modal {
+    border-radius: 24px;
+    max-width: 440px;
+    margin: auto;
+    position: relative;
+  }
+  .modal-overlay { align-items: center; padding: 40px; }
+}

@@ -55,8 +55,10 @@ const Rooms = {
     const accessories = State.getRoomAccessories(id);
     const on = accessories.filter(a => State.isOn(a)).length;
 
-    // Swap views
-    document.getElementById('homeView').classList.remove('active');
+    App.navFrom = App.currentView;
+    App.currentView = 'room';
+
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active', 'slide-in'));
     const roomView = document.getElementById('roomView');
     roomView.classList.add('active', 'slide-in');
 

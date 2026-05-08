@@ -98,21 +98,40 @@ const Devices = {
     if (type === 'sensor' || type === 'remote') return '';
 
     let html = '';
+    const chars = accessory.serviceCharacteristics || [];
+    const findChar = (t) => chars.find(c => c.type === t);
 
-    // Brightness slider for lights
+    // Brightness, color temp, and color for lights
     if (type === 'light') {
-      const brightness = State.getCharValue(accessory, 'Brightness') ?? 100;
       const isOn = State.isOn(accessory);
-      const char = accessory.serviceCharacteristics.find(c => c.type === 'Brightness');
-      if (char) {
-        html += this.sliderHTML(uid, 'brightness', 'Bright', isOn ? brightness : 0, accessory.aid, 'Brightness', char.iid);
+
+      const bChar = findChar('Brightness');
+      if (bChar) {
+        const brightness = State.getCharValue(accessory, 'Brightness') ?? 100;
+        html += this.sliderHTML(uid, 'brightness', 'Bright', isOn ? brightness : 0, accessory.aid, 'Brightness', bChar.iid);
+      }
+
+      const tChar = findChar('ColorTemperature');
+      if (tChar) {
+        const minM = tChar.minValue ?? 140;
+        const maxM = tChar.maxValue ?? 500;
+        const step = tChar.minStep || 1;
+        const val = State.getCharValue(accessory, 'ColorTemperature') ?? minM;
+        html += this.colorSliderHTML(uid, 'temp', 'Temp', val, accessory.aid, 'ColorTemperature', tChar.iid, step, minM, maxM);
+      }
+
+      const hChar = findChar('Hue');
+      if (hChar) {
+        const step = hChar.minStep || 1;
+        const val = State.getCharValue(accessory, 'Hue') ?? 0;
+        html += this.colorSliderHTML(uid, 'hue', 'Color', val, accessory.aid, 'Hue', hChar.iid, step, 0, 360);
       }
     }
 
     // Speed slider for fans and purifiers
     if (type === 'fan' || type === 'purifier') {
       const speed = State.getCharValue(accessory, 'RotationSpeed') ?? 50;
-      const char = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
+      const char = findChar('RotationSpeed');
       if (char) {
         const step = char.minStep || 1;
         html += this.sliderHTML(uid, 'speed', 'Speed', speed, accessory.aid, 'RotationSpeed', char.iid, step);
@@ -137,23 +156,51 @@ const Devices = {
     return html;
   },
 
-  // ── Slider HTML ────────────────────────────────────
+  // ── Slider HTML (linear: brightness, speed) ────────
   sliderHTML(uid, prop, label, value, aid, charType, iid, step = 1) {
+    const fillClass = prop === 'brightness' ? 'brightness' : 'speed';
     return `
       <div class="slider-row">
         <div class="slider-label">${label}</div>
         <div class="slider-track"
              data-uid="${uid}" data-prop="${prop}" data-aid="${aid}"
-             data-ctype="${charType}" data-iid="${iid}" data-step="${step}"
+             data-ctype="${charType}" data-iid="${iid}"
+             data-step="${step}" data-min="0" data-max="100" data-mode="linear"
              onmousedown="Devices.startSlide(event)"
              ontouchstart="Devices.startSlide(event)">
-          <div class="slider-fill ${prop === 'brightness' ? 'brightness' : 'speed'}"
-               id="fill-${uid}-${prop}" style="width:${value}%">
+          <div class="slider-fill ${fillClass}"
+               id="fill-${uid}-${prop}" style="width:${Math.round(value)}%">
             <div class="slider-knob"></div>
           </div>
         </div>
-        <div class="slider-value" id="val-${uid}-${prop}">${value}%</div>
+        <div class="slider-value" id="val-${uid}-${prop}">${Math.round(value)}%</div>
       </div>`;
+  },
+
+  // ── Color slider HTML (hue, color temperature) ─────
+  // Track shows the full color gradient; knob slides over it.
+  colorSliderHTML(uid, prop, label, value, aid, charType, iid, step, min, max) {
+    const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    return `
+      <div class="slider-row">
+        <div class="slider-label">${label}</div>
+        <div class="color-track ${prop}"
+             data-uid="${uid}" data-prop="${prop}" data-aid="${aid}"
+             data-ctype="${charType}" data-iid="${iid}"
+             data-step="${step}" data-min="${min}" data-max="${max}" data-mode="color"
+             onmousedown="Devices.startSlide(event)"
+             ontouchstart="Devices.startSlide(event)">
+          <div class="color-knob" id="knob-${uid}-${prop}" style="left:${pct}%"></div>
+        </div>
+        <div class="slider-value" id="val-${uid}-${prop}">${this.sliderDisplay(prop, value)}</div>
+      </div>`;
+  },
+
+  // ── Format slider value for display ────────────────
+  sliderDisplay(prop, value) {
+    if (prop === 'temp') return Math.round(1000000 / value) + 'K';
+    if (prop === 'hue') return Math.round(value) + '°';
+    return Math.round(value) + '%';
   },
 
   // ── Toggle on/off ──────────────────────────────────
@@ -191,24 +238,37 @@ const Devices = {
     const charType = track.dataset.ctype;
     const iid = parseInt(track.dataset.iid);
     const step = parseFloat(track.dataset.step) || 1;
+    const min = parseFloat(track.dataset.min) || 0;
+    const max = parseFloat(track.dataset.max) || 100;
+    const mode = track.dataset.mode || 'linear';
 
     const update = (ev) => {
       const rect = track.getBoundingClientRect();
       const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      let pct = Math.round(((clientX - rect.left) / rect.width) * 100);
+      let pct = ((clientX - rect.left) / rect.width) * 100;
       pct = Math.max(0, Math.min(100, pct));
-      // Snap to step
-      if (step > 1) pct = Math.round(pct / step) * step;
 
-      const fill = document.getElementById(`fill-${uid}-${prop}`);
+      let value = min + (pct / 100) * (max - min);
+      if (step > 0) value = Math.round(value / step) * step;
+      value = Math.max(min, Math.min(max, value));
+
+      const displayPct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+
+      if (mode === 'color') {
+        const knob = document.getElementById(`knob-${uid}-${prop}`);
+        if (knob) knob.style.left = displayPct + '%';
+      } else {
+        const fill = document.getElementById(`fill-${uid}-${prop}`);
+        if (fill) fill.style.width = displayPct + '%';
+      }
+
       const val = document.getElementById(`val-${uid}-${prop}`);
-      if (fill) fill.style.width = pct + '%';
-      if (val) val.textContent = pct + '%';
+      if (val) val.textContent = this.sliderDisplay(prop, value);
 
-      return pct;
+      return value;
     };
 
-    let lastPct = update(e);
+    let lastVal = update(e);
 
     const finish = async () => {
       document.removeEventListener('mousemove', onMove);
@@ -217,15 +277,26 @@ const Devices = {
       document.removeEventListener('touchend', finish);
 
       try {
-        await API.setCharacteristic(uid, charType, lastPct);
-        State.updateCharValue(aid, iid, lastPct);
+        await API.setCharacteristic(uid, charType, lastVal);
+        State.updateCharValue(aid, iid, lastVal);
+        // When changing hue, force saturation to 100 so the color is actually visible
+        if (prop === 'hue') {
+          const acc = State.getAccessory(uid);
+          const sChar = (acc?.serviceCharacteristics || []).find(c => c.type === 'Saturation');
+          if (sChar && sChar.value !== 100) {
+            try {
+              await API.setCharacteristic(uid, 'Saturation', 100);
+              State.updateCharValue(aid, sChar.iid, 100);
+            } catch (_) { /* ignore secondary failure */ }
+          }
+        }
       } catch (err) {
         UI.toast('Failed to update');
         console.error(err);
       }
     };
 
-    const onMove = (ev) => { lastPct = update(ev); };
+    const onMove = (ev) => { lastVal = update(ev); };
 
     if (e.type === 'mousedown') {
       document.addEventListener('mousemove', onMove);

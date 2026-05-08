@@ -292,9 +292,59 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
-  width: 36px;
+  width: 44px;
   text-align: right;
   flex-shrink: 0;
+}
+
+/* ── Color track (hue, color temperature) ────────────── */
+.color-track {
+  flex: 1;
+  height: 14px;
+  border-radius: 7px;
+  position: relative;
+  cursor: pointer;
+  box-shadow: var(--neu-pressed);
+  border: 1px solid rgba(0,0,0,.05);
+}
+
+[data-theme="dark"] .color-track {
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,.7), inset -3px -3px 6px rgba(60,63,78,.1);
+  border-color: rgba(0,0,0,.4);
+}
+
+.color-track.hue {
+  background: linear-gradient(90deg,
+    hsl(0,90%,55%)    0%,
+    hsl(60,90%,55%)   16.7%,
+    hsl(120,80%,45%)  33.3%,
+    hsl(180,85%,45%)  50%,
+    hsl(240,90%,55%)  66.7%,
+    hsl(300,85%,55%)  83.3%,
+    hsl(360,90%,55%)  100%);
+}
+
+.color-track.temp {
+  background: linear-gradient(90deg, #cee8ff 0%, #ffffff 28%, #fff2d8 55%, #ffc585 80%, #ff9f43 100%);
+}
+
+.color-knob {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid rgba(0,0,0,.1);
+  box-shadow: 1px 2px 4px rgba(0,0,0,.25);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .color-knob {
+  background: #f0f0f0;
+  border-color: rgba(0,0,0,.4);
 }
 
 /* ── Battery pill (inline on device cards) ───────────── */

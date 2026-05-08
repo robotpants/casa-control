@@ -20,11 +20,27 @@
 /* ── Light card offline state ──────────────────────── */
 .light-card.offline { opacity: .5; }
 
+/* ── Debug info inside expand panel ────────────────── */
+.device-debug {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  box-shadow: var(--neu-pressed-sm);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
+
 /* ── Edit Device button (inside expand panel) ──────── */
 .device-edit-row {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px;
+  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(0,0,0,.05);
 }

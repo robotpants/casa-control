@@ -64,6 +64,7 @@ const Devices = {
         </div>
         <div class="light-controls">
           ${controls}
+          ${this.debugInfoHTML(accessory)}
           <div class="device-edit-row">
             <button class="neu-btn-rect" type="button" onclick="event.stopPropagation();Devices.openManageModal('${accessory.uniqueId}')">
               ${ic('edit', 14)}<span>Edit Device</span>
@@ -506,6 +507,29 @@ const Devices = {
   toggleExpand(uniqueId) {
     const card = document.getElementById(`card-${uniqueId}`);
     if (card) card.classList.toggle('expanded');
+  },
+
+  // ── Debug info row (inside expanded controls) ─────
+  // Shows what's actually under the hood so you can tell similar
+  // cards apart and figure out grouping strategies for new plugins.
+  debugInfoHTML(accessory) {
+    const info = accessory.accessoryInformation || {};
+    const inst = accessory.instance || {};
+    const sibs = State.getSiblings(accessory);
+    const lines = [];
+    if (info.Name) lines.push(`name  ${info.Name}`);
+    if (info.Manufacturer || info.Model) {
+      lines.push(`hw    ${[info.Manufacturer, info.Model].filter(Boolean).join(' · ')}`);
+    }
+    if (info.SerialNumber) lines.push(`sn    ${info.SerialNumber}`);
+    if (inst.name) lines.push(`bridge ${inst.name}`);
+    lines.push(`aid   ${accessory.aid}  ·  uid ${accessory.uniqueId.slice(0, 12)}…`);
+    if (sibs.length) {
+      lines.push(`bundled ${sibs.length + 1} services: ${[accessory.serviceName, ...sibs.map(s => s.serviceName)].join(', ')}`);
+    } else {
+      lines.push(`service ${accessory.serviceName} · ${accessory.humanType}`);
+    }
+    return `<pre class="device-debug">${lines.join('\n')}</pre>`;
   },
 
   // ── Manage modal (rename + room assignment) ───────

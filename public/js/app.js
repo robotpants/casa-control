@@ -398,7 +398,7 @@ const App = {
             <div class="s-icon">${ic('home', 18)}</div>
             <div>
               <div class="s-label">Casa Control</div>
-              <div class="s-sub">v0.0.5 · ${State.accessories.length} accessories</div>
+              <div class="s-sub">v0.0.6 · ${State.accessories.length} accessories</div>
             </div>
           </div>
         </div>

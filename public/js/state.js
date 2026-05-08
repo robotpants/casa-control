@@ -452,17 +452,21 @@ const State = {
   },
 
   // ── Group key for an accessory ────────────────────
-  // Prefer Manufacturer + Model + SerialNumber when all are reliably
-  // present (catches Lutron Pico — same SN across button accessories
-  // with different aids). Fall back to aid for plugins that don't
-  // expose accessoryInformation.
+  // Prefer Manufacturer + Model + SerialNumber + Name when reliably
+  // present. Including Name is critical for plugins (notably the
+  // Lutron Caseta one) that put the *bridge's* serial number on every
+  // accessory — without Name, all Lutron lights would collapse to a
+  // single primary and the rest would vanish into siblings. Pico
+  // buttons of one physical remote still share one Name, so they
+  // continue to bundle correctly.
   _groupKey(a) {
     const info = a.accessoryInformation || {};
     const mfg = (info.Manufacturer || '').trim();
     const model = (info.Model || '').trim();
     const sn = (info.SerialNumber || '').trim();
-    if (mfg && model && sn && sn.length >= 4) {
-      return `phys:${mfg}|${model}|${sn}`;
+    const name = (info.Name || '').trim();
+    if (mfg && model && sn && sn.length >= 4 && name) {
+      return `phys:${mfg}|${model}|${sn}|${name}`;
     }
     return `aid:${a.aid}`;
   },

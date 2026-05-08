@@ -59,6 +59,14 @@ const Icons = {
 
   // Remotes
   radio: '<svg viewBox="0 0 24 24"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>',
+
+  // Battery (rotated to vertical-ish horizontal classic shape)
+  battery: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/></svg>',
+  batteryLow: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="11" x2="6" y2="13"/></svg>',
+  batteryCharging: '<svg viewBox="0 0 24 24"><path d="M15 7h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><path d="M7 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/><line x1="22" y1="11" x2="22" y2="13"/><polyline points="11 7 8 12 13 12 10 17"/></svg>',
+
+  // Misc
+  sunDim: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 4h.01"/><path d="M20 12h.01"/><path d="M12 20h.01"/><path d="M4 12h.01"/><path d="M17.657 6.343h.01"/><path d="M17.657 17.657h.01"/><path d="M6.343 17.657h.01"/><path d="M6.343 6.343h.01"/></svg>',
 };
 
 // Helper: render icon at size

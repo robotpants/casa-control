@@ -20,8 +20,14 @@ const State = {
   editMode: false,
   isDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
 
+  // ── Battery index (aid → { level, low, charging }) ─
+  // Battery accessories share the parent device's aid, so we
+  // index them on load and surface inline rather than as cards.
+  batteries: {},
+
   // ── Device type map ───────────────────────────────
   // Maps Homebridge humanType to our internal type
+  // null = hidden from device list (junk, or surfaced elsewhere)
   typeMap: {
     'Lightbulb': 'light',
     'Switch': 'switch',
@@ -29,8 +35,10 @@ const State = {
     'Air Purifier': 'purifier',
     'Air Quality Sensor': 'sensor',
     'Temperature Sensor': 'sensor',
+    'Light Sensor': 'sensor',
     'Heater Cooler': 'heater',
     'Stateless Programmable Switch': 'remote',
+    'Battery': null,
     'Protocol Information': null,
     'Service Label': null,
   },
@@ -115,7 +123,53 @@ const State = {
 
   // ── Get device type ────────────────────────────────
   getType(accessory) {
-    return this.typeMap[accessory.humanType] || 'unknown';
+    const ht = accessory.humanType;
+    if (ht in this.typeMap) return this.typeMap[ht];
+    return 'unknown';
+  },
+
+  // ── Process raw accessories from Homebridge ───────
+  // Dedup, index batteries, then strip hidden types.
+  processAccessories(raw) {
+    const seen = new Set();
+    const deduped = (raw || []).filter(a => {
+      if (seen.has(a.uniqueId)) return false;
+      seen.add(a.uniqueId);
+      return true;
+    });
+
+    this.batteries = {};
+    for (const a of deduped) {
+      if (a.humanType !== 'Battery') continue;
+      const chars = a.serviceCharacteristics || [];
+      const find = t => chars.find(c => c.type === t);
+      const level    = find('BatteryLevel')?.value;
+      const low      = find('StatusLowBattery')?.value;
+      const charging = find('ChargingState')?.value;
+      this.batteries[a.aid] = {
+        level: level == null ? null : Math.round(level),
+        low: low === 1,
+        charging: charging === 1,
+      };
+    }
+
+    return deduped.filter(a => this.getType(a) !== null);
+  },
+
+  // ── Battery lookup (parent device → battery info) ─
+  getBattery(accessory) {
+    if (!accessory) return null;
+    return this.batteries[accessory.aid] || null;
+  },
+
+  // ── Devices with low battery ──────────────────────
+  // "Low" = StatusLowBattery flag OR level < 20%
+  getLowBatteryDevices() {
+    return this.accessories.filter(a => {
+      const b = this.getBattery(a);
+      if (!b) return false;
+      return b.low || (b.level !== null && b.level < 20);
+    });
   },
 
   // ── Get all controllable accessories ──────────────
@@ -163,19 +217,8 @@ const State = {
     this.loadFavorites();
     const hasSavedRooms = this.loadRooms();
 
-    // Fetch live accessories
-    this.accessories = await API.getAccessories();
-
-    // Deduplicate by uniqueId (Homebridge sometimes returns duplicates)
-    const seen = new Set();
-    this.accessories = this.accessories.filter(a => {
-      if (seen.has(a.uniqueId)) return false;
-      seen.add(a.uniqueId);
-      return true;
-    });
-
-    // Filter out junk types
-    this.accessories = this.accessories.filter(a => this.getType(a) !== null);
+    const raw = await API.getAccessories();
+    this.accessories = this.processAccessories(raw);
 
     if (!hasSavedRooms) {
       this.buildDefaultRooms();

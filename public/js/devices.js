@@ -37,6 +37,7 @@ const Devices = {
               ${isOffline ? '<span style="color:var(--danger)">Offline</span>' : status}
             </div>
           </div>
+          ${this.batteryHTML(accessory)}
           <div data-star
                style="cursor:pointer;font-size:16px;color:${isFav ? 'var(--accent)' : 'var(--text-muted)'};padding:4px"
                onclick="event.stopPropagation();Devices.toggleFav('${accessory.uniqueId}')">
@@ -50,6 +51,25 @@ const Devices = {
         </div>
         ${hasControls ? `<div class="light-controls">${controls}</div>` : ''}
       </div>`;
+  },
+
+  // ── Inline battery pill ────────────────────────────
+  // Surfaces the parent device's Battery service inline,
+  // color-coded by level. Returns empty string if no battery.
+  batteryHTML(accessory) {
+    const b = State.getBattery(accessory);
+    if (!b || b.level === null) return '';
+    const level = b.level;
+    const isLow = b.low || level < 20;
+    const isWarn = !isLow && level < 40;
+    const klass = isLow ? 'low' : (isWarn ? 'warn' : 'ok');
+    const iconName = b.charging ? 'batteryCharging' : (isLow ? 'batteryLow' : 'battery');
+    const title = `Battery ${level}%${b.charging ? ' · charging' : ''}${isLow ? ' · low' : ''}`;
+    return `
+      <span class="battery-pill ${klass}" title="${title}">
+        ${ic(iconName, 11)}
+        <span class="battery-pct">${level}%</span>
+      </span>`;
   },
 
   // ── Toggle element ─────────────────────────────────

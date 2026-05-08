@@ -30,15 +30,8 @@ const App = {
   // ── Refresh accessory state ────────────────────────
   async refresh() {
     try {
-      const fetched = await API.getAccessories();
-      const seen = new Set();
-      State.accessories = fetched
-        .filter(a => {
-          if (seen.has(a.uniqueId)) return false;
-          seen.add(a.uniqueId);
-          return true;
-        })
-        .filter(a => State.getType(a) !== null);
+      const raw = await API.getAccessories();
+      State.accessories = State.processAccessories(raw);
       this.updateActiveView();
     } catch (e) {
       console.warn('Refresh failed:', e.message);
@@ -49,10 +42,13 @@ const App = {
   updateActiveView() {
     if (this.currentView === 'home') {
       Rooms.render();
+      this.renderLowBatteryBanner();
       this.renderFavorites();
     } else if (this.currentView === 'room' && State.currentRoomId) {
       Rooms.renderRoomContent(State.currentRoomId);
       Rooms.render();
+    } else if (this.currentView === 'devices') {
+      this.renderDevicesView();
     }
   },
 
@@ -126,8 +122,42 @@ const App = {
     // Rooms
     Rooms.render();
 
+    // Low-battery banner
+    this.renderLowBatteryBanner();
+
     // Favorites
     this.renderFavorites();
+  },
+
+  // ── Low-battery banner ─────────────────────────────
+  renderLowBatteryBanner() {
+    const section = document.getElementById('lowBatterySection');
+    if (!section) return;
+
+    const lows = State.getLowBatteryDevices();
+    if (!lows.length) {
+      section.style.display = 'none';
+      section.innerHTML = '';
+      return;
+    }
+
+    const sorted = lows.slice().sort((a, b) => {
+      const la = State.getBattery(a)?.level ?? 100;
+      const lb = State.getBattery(b)?.level ?? 100;
+      return la - lb;
+    });
+    const worst = State.getBattery(sorted[0])?.level ?? 0;
+
+    section.style.display = 'block';
+    section.innerHTML = `
+      <div class="low-battery-banner neu-raised">
+        <div class="lbb-icon">${ic('batteryLow', 18)}</div>
+        <div class="lbb-text">
+          <div class="lbb-title">${lows.length === 1 ? '1 device needs a battery' : `${lows.length} devices need batteries`}</div>
+          <div class="lbb-sub">${sorted.map(a => `${a.serviceName} ${State.getBattery(a)?.level ?? '?'}%`).slice(0, 3).join(' · ')}${sorted.length > 3 ? ' · …' : ''}</div>
+        </div>
+        <div class="lbb-pct ${worst < 10 ? 'critical' : ''}">${worst}%</div>
+      </div>`;
   },
 
   // ── Favorites section ─────────────────────────────

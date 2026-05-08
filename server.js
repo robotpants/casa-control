@@ -133,7 +133,16 @@ app.use('/api', (req, res) => {
           return res.status(500).json({ error: err.message });
         }
         if (isAccessoryWrite) {
-          console.log(`[PUT ${req.path}] → ${status} ${typeof data === 'string' ? data.slice(0, 200) : JSON.stringify(data).slice(0, 200)}`);
+          // Pull the value of the characteristic we just wrote out of the response
+          // so we can see if Homebridge confirms the new state vs. echoes the old.
+          let echoed = '?';
+          try {
+            const obj = typeof data === 'object' ? data : JSON.parse(data);
+            const charType = req.body?.characteristicType;
+            const c = (obj?.serviceCharacteristics || []).find(c => c.type === charType);
+            echoed = c ? `${c.type}=${c.value}` : '(char not in response)';
+          } catch (_) {}
+          console.log(`[PUT ${req.path}] → ${status}  wrote ${req.body?.characteristicType}=${req.body?.value}  response shows ${echoed}`);
         }
         res.status(status).json(data);
       }

@@ -144,7 +144,12 @@ app.get('/api/pi-stats', (req, res) => {
 });
 
 // ── Proxy all /api/* to Homebridge ──────────────────
-app.use('/api', (req, res) => {
+// Wraps each request in a single-shot retry: if Homebridge returns 401
+// (e.g. after an HB restart invalidated our cached token), we throw the
+// token away, log in again, and replay the same request once. This is
+// the "casa-control restart" that used to silently fix toggle-off
+// failures — now it happens automatically.
+function proxyToHomebridge(req, res, attempt = 0) {
   getToken((err) => {
     if (err) {
       console.error('Auth error:', err.message);
@@ -152,7 +157,7 @@ app.use('/api', (req, res) => {
     }
     const hasBody = req.body && Object.keys(req.body).length > 0;
     const isAccessoryWrite = req.method === 'PUT' && req.path.startsWith('/accessories/');
-    if (isAccessoryWrite) {
+    if (isAccessoryWrite && attempt === 0) {
       console.log(`[PUT ${req.path}] body: ${JSON.stringify(req.body)}`);
     }
     hbRequest(
@@ -164,23 +169,50 @@ app.use('/api', (req, res) => {
           console.error('HB request error:', err.message);
           return res.status(500).json({ error: err.message });
         }
+        // Stale token recovery: HB invalidated us. Refresh and retry once.
+        if (status === 401 && attempt === 0) {
+          console.warn(`Homebridge 401 on ${req.method} ${req.path}; refreshing token and retrying`);
+          token = null;
+          tokenExpiry = 0;
+          return proxyToHomebridge(req, res, 1);
+        }
         if (isAccessoryWrite) {
-          // Pull the value of the characteristic we just wrote out of the response
-          // so we can see if Homebridge confirms the new state vs. echoes the old.
+          // Compare what we wrote against what Homebridge echoed back.
+          // A mismatch means the plugin acked the request (200) but
+          // didn't actually apply the value — surface it so the client
+          // can revert its optimistic UI instead of lying to the user.
           let echoed = '?';
+          let mismatch = false;
           try {
             const obj = typeof data === 'object' ? data : JSON.parse(data);
             const charType = req.body?.characteristicType;
             const c = (obj?.serviceCharacteristics || []).find(c => c.type === charType);
-            echoed = c ? `${c.type}=${c.value}` : '(char not in response)';
+            if (c) {
+              echoed = `${c.type}=${c.value}`;
+              const want = req.body?.value;
+              // Loose-equal so 1 vs true / 0 vs false don't false-positive.
+              // eslint-disable-next-line eqeqeq
+              if (c.value != want) mismatch = true;
+            } else {
+              echoed = '(char not in response)';
+            }
+            if (mismatch && typeof obj === 'object' && obj) {
+              obj._mismatch = true;
+              obj._wrote = req.body?.value;
+              obj._echoed = c?.value;
+              data = obj;
+            }
           } catch (_) {}
-          console.log(`[PUT ${req.path}] → ${status}  wrote ${req.body?.characteristicType}=${req.body?.value}  response shows ${echoed}`);
+          const tag = mismatch ? 'MISMATCH' : 'ok';
+          console.log(`[PUT ${req.path}] → ${status} ${tag}  wrote ${req.body?.characteristicType}=${req.body?.value}  response shows ${echoed}${attempt ? `  (retry ${attempt})` : ''}`);
         }
         res.status(status).json(data);
       }
     );
   });
-});
+}
+
+app.use('/api', (req, res) => proxyToHomebridge(req, res));
 
 // ── Start ────────────────────────────────────────────
 app.listen(PORT, () => {

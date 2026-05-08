@@ -31,6 +31,9 @@ const API = {
   // Set a characteristic value on an accessory
   // uniqueId is the Homebridge accessory uniqueId (hex string)
   // charType is the characteristic type name (e.g. "On", "Brightness", "RotationSpeed")
+  // Throws on HTTP failure or echo mismatch (server flags _mismatch=true
+  // when the plugin acked but didn't apply the new value — most often the
+  // plugin is in a bad state and the user needs to know, not see a UI lie).
   async setCharacteristic(uniqueId, charType, value) {
     const res = await this._fetch(`/api/accessories/${uniqueId}`, {
       method: 'PUT',
@@ -41,7 +44,13 @@ const API = {
       })
     });
     if (!res.ok) throw new Error(`Failed to set characteristic ${charType} on ${uniqueId}`);
-    return res.json();
+    const body = await res.json();
+    if (body && body._mismatch) {
+      const err = new Error(`Plugin ignored ${charType}=${value} (echoed ${body._echoed})`);
+      err.mismatch = true;
+      throw err;
+    }
+    return body;
   },
 
   // Get a single accessory

@@ -76,7 +76,8 @@ const Rooms = {
     const room = State.rooms.find(r => r.id === id);
     if (!room) return;
     const accessories = State.getRoomAccessories(id);
-    const on = accessories.filter(a => State.isOn(a)).length;
+    const lights = accessories.filter(a => State.getType(a) === 'light');
+    const lightsOn = lights.filter(a => State.isOn(a)).length;
     const c = document.getElementById('roomContent');
 
     if (!accessories.length) {
@@ -88,36 +89,39 @@ const Rooms = {
       return;
     }
 
-    c.innerHTML = `
+    const masterRow = lights.length ? `
       <div class="master-row neu-raised">
         <div class="master-info">
-          <h3>All Devices</h3>
-          <span id="masterStatus">${on} of ${accessories.length} on</span>
+          <h3>Lights</h3>
+          <span id="masterStatus">${lightsOn} of ${lights.length} on</span>
         </div>
-        <div class="toggle ${on > 0 ? 'on' : ''}" id="masterToggle"
+        <div class="toggle ${lightsOn > 0 ? 'on' : ''}" id="masterToggle"
              onclick="Rooms.toggleMaster('${id}')">
           <div class="knob"></div>
         </div>
-      </div>
+      </div>` : '';
+
+    c.innerHTML = `
+      ${masterRow}
       <div class="section-label">Devices</div>
       <div class="light-list" id="lightList"></div>`;
 
     Devices.renderList(id);
   },
 
-  // ── Master Toggle ─────────────────────────────────
+  // ── Master Toggle (lights only) ───────────────────
+  // Brute-force "all off" / "all on" for any other category should be
+  // handled by automations / scenes rather than this toggle.
   async toggleMaster(id) {
-    const accessories = State.getRoomAccessories(id)
-      .filter(a => {
-        const type = State.getType(a);
-        return type === 'light' || type === 'switch' || type === 'fan' || type === 'purifier';
-      });
+    const lights = State.getRoomAccessories(id)
+      .filter(a => State.getType(a) === 'light');
+    if (!lights.length) return;
 
-    const anyOn = accessories.some(a => State.isOn(a));
+    const anyOn = lights.some(a => State.isOn(a));
     const targetState = !anyOn;
 
     await Promise.allSettled(
-      accessories.map(a => API.setOnOff(a, targetState).then(() => {
+      lights.map(a => API.setOnOff(a, targetState).then(() => {
         const char = a.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
         if (char) State.updateCharValue(a.aid, char.iid, targetState ? 1 : 0);
       }))

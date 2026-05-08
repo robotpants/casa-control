@@ -1,7 +1,11 @@
 # Casa Control — TODO
 
 ## Bugs
-- **Master Bedroom TV Light**: state mismatch (UI shows off when light is on) and can't turn off via toggle. Likely Hue plugin reporting stale state. Console showed no errors. Fire-and-forget toggle didn't fix it. Needs Network-tab inspection of the PUT request.
+
+### P1 — fix next
+- **Devices won't turn OFF.** Reproduces on desktop AND iOS. Toggle works once (on→off OR off→on) but the off-direction misbehaves: the optimistic UI flips, the request fires, but the device stays on (or snaps back). Master Bedroom TV Light is the most consistent case but it's broader. Already tried: dedup removed, fire-and-forget pattern, 8s timeout, optimistic grace window. None resolved it. Console shows no errors. **Next diagnostic step: open DevTools Network tab, capture the PUT to `/api/accessories/<uid>` when toggling off, inspect status code + response body. Compare to the on-path request that succeeds.** Likely candidates: (a) Hue plugin needs a different payload shape for off, (b) a characteristic other than `On`/`Active` needs to be sent (e.g., setting Brightness to 0 instead), (c) Homebridge UI auth token is timing out only on writes, (d) plugin is re-firing the previous on state from cache.
+
+### P2 — when convenient
 - **Pico bundling pulled lights out of Lutron-switch rooms**: when serial-number-based grouping landed, lights driven by Lutron switches (Caseta) seem to have been re-keyed to a different primary uniqueId and the room migration didn't carry them across. Diagnose via the device debug panel — compare a missing light's `sn` / `aid` fields before and after.
 
 ## Features

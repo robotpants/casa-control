@@ -19,8 +19,11 @@ const API = {
   },
 
   // Get all accessories
+  // refreshServices=true forces Homebridge to actively query every
+  // child bridge — without it the response is main-bridge cache only,
+  // and Lutron/Dreo/Levoit child bridges are invisible.
   async getAccessories() {
-    const res = await this._fetch('/api/accessories');
+    const res = await this._fetch('/api/accessories?refreshServices=true');
     if (!res.ok) throw new Error('Failed to fetch accessories');
     return res.json();
   },

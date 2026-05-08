@@ -1,11 +1,11 @@
-/* ── Casa Control · rooms.js ──────────────────────────
+/* ── Casa Control · rooms.js ─────────────────────────────
    Room grid rendering and room detail view.
    Reads from State, calls API, updates State on success.
    ───────────────────────────────────────────────────── */
 
 const Rooms = {
 
-  // ── Room Grid (Home view) ─────────────────────────
+  // ── Room Grid (Home view) ───────────────────────
   render() {
     const grid = document.getElementById('roomGrid');
     if (!grid) return;
@@ -97,7 +97,7 @@ const Rooms = {
       .filter(b => b.total > 0);
   },
 
-  // ── Open Room Detail ──────────────────────────────
+  // ── Open Room Detail ─────────────────────────────
   openRoom(id) {
     State.currentRoomId = id;
     const room = State.rooms.find(r => r.id === id);
@@ -122,7 +122,7 @@ const Rooms = {
     this.renderRoomContent(id);
   },
 
-  // ── Room Content ──────────────────────────────────
+  // ── Room Content ─────────────────────────────────
   renderRoomContent(id) {
     const room = State.rooms.find(r => r.id === id);
     if (!room) return;
@@ -189,7 +189,29 @@ const Rooms = {
     Devices.renderList(id);
   },
 
-  // ── Master Toggle (lights only) ───────────────────
+  // ── Refresh just the room view's header counts ────
+  // Called after a device toggle so "0 of N on" / master toggle /
+  // master status update without a full re-render that would
+  // collapse expanded cards.
+  refreshHeader(id) {
+    if (id !== State.currentRoomId) return;
+    const accessories = State.getRoomAccessories(id);
+    const on = accessories.filter(a => State.isOn(a)).length;
+    const sub = document.getElementById('rvSub');
+    if (sub) {
+      sub.textContent = accessories.length
+        ? `${on} of ${accessories.length} on`
+        : 'No devices yet';
+    }
+    const lights = accessories.filter(a => State.getType(a) === 'light');
+    const lightsOn = lights.filter(a => State.isOn(a)).length;
+    const masterStatus = document.getElementById('masterStatus');
+    if (masterStatus) masterStatus.textContent = `${lightsOn} of ${lights.length} on`;
+    const masterToggle = document.getElementById('masterToggle');
+    if (masterToggle) masterToggle.classList.toggle('on', lightsOn > 0);
+  },
+
+  // ── Master Toggle (lights only) ─────────────────
   // Brute-force "all off" / "all on" for any other category should be
   // handled by automations / scenes rather than this toggle.
   async toggleMaster(id) {
@@ -211,7 +233,7 @@ const Rooms = {
     this.render();
   },
 
-  // ── Edit Mode ─────────────────────────────────────
+  // ── Edit Mode ───────────────────────────────────
   toggleEditMode() {
     State.editMode = !State.editMode;
     const btn = document.getElementById('editBtn');
@@ -220,7 +242,7 @@ const Rooms = {
     UI.toast(State.editMode ? 'Tap trash to delete' : 'Edit mode off');
   },
 
-  // ── Add Room Modal ────────────────────────────────
+  // ── Add Room Modal ─────────────────────────────
   openAddModal() {
     State._selectedIcon = 'sofa';
     UI.openModal(`
@@ -240,7 +262,7 @@ const Rooms = {
     setTimeout(() => document.getElementById('roomNameInput')?.focus(), 350);
   },
 
-  // ── Edit Room Modal ───────────────────────────────
+  // ── Edit Room Modal ─────────────────────────────
   openEditModal(id) {
     const room = State.rooms.find(r => r.id === id);
     if (!room) return;
@@ -270,7 +292,7 @@ const Rooms = {
     }, 350);
   },
 
-  // ── Device picker ──────────────────────────────────
+  // ── Device picker ────────────────────────────────
   // Grouped checklist of every controllable device.
   // Shows current room of each device so user knows what they're moving.
   _devicePickHTML(roomId) {
@@ -386,7 +408,7 @@ const Rooms = {
     UI.toast(`${room?.name || 'Room'} deleted`);
   },
 
-  // ── Icon grid helper ───────────────────────────────
+  // ── Icon grid helper ─────────────────────────────
   _iconGrid(selected) {
     const icons = ['sofa', 'bed', 'monitor', 'chefHat', 'garage', 'tree',
                    'lightbulb', 'lamp', 'fan', 'wind', 'flame', 'thermometer',

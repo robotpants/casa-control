@@ -1,4 +1,4 @@
-/* ── Casa Control · devices.js ────────────────────────
+/* ── Casa Control · devices.js ────────────────────────────
    Device card rendering and control interactions.
    Reads from State, calls API, updates State on success.
    ───────────────────────────────────────────────────── */
@@ -21,7 +21,7 @@ const Devices = {
     { key: 'purple', name: 'Purple', hue: 275, sat: 45, swatch: '#9170c4' },
   ],
 
-  // ── Render device list for a room ─────────────────
+  // ── Render device list for a room ──────────────────
   renderList(roomId) {
     const list = document.getElementById('lightList');
     if (!list) return;
@@ -29,7 +29,7 @@ const Devices = {
     list.innerHTML = accessories.map((a, i) => this.cardHTML(a, roomId)).join('');
   },
 
-  // ── Single device card ─────────────────────────────
+  // ── Single device card ──────────────────────────
   cardHTML(accessory, roomId) {
     const type = State.getType(accessory);
     const isOn = State.isOn(accessory);
@@ -74,7 +74,7 @@ const Devices = {
       </div>`;
   },
 
-  // ── Inline battery pill ────────────────────────────
+  // ── Inline battery pill ──────────────────────────
   // Surfaces the parent device's Battery service inline,
   // using the design system's .status-pill semantic variants.
   batteryHTML(accessory) {
@@ -92,7 +92,7 @@ const Devices = {
       </span>`;
   },
 
-  // ── Toggle element ─────────────────────────────────
+  // ── Toggle element ──────────────────────────────
   toggleHTML(accessory, roomId) {
     const type = State.getType(accessory);
     const isOn = State.isOn(accessory);
@@ -362,7 +362,7 @@ const Devices = {
     });
   },
 
-  // ── Toggle custom color panel ──────────────────────
+  // ── Toggle custom color panel ───────────────────────
   toggleCustomColor(uid) {
     const panel = document.getElementById(`color-custom-${uid}`);
     if (panel) panel.classList.toggle('show');
@@ -380,7 +380,7 @@ const Devices = {
   // the API still reporting the pre-toggle state for a few seconds.
   _recentToggles: {},
 
-  // ── Toggle on/off ──────────────────────────────────
+  // ── Toggle on/off ────────────────────────────────
   // Fire-and-forget: optimistic UI updates immediately; the HTTP
   // request runs in the background. Tile stays responsive even when
   // Homebridge / a slow plugin takes seconds to acknowledge.
@@ -418,15 +418,21 @@ const Devices = {
         if (targetState && type === 'light') {
           const brightChar = accessory.serviceCharacteristics.find(c => c.type === 'Brightness');
           if (brightChar && (brightChar.value ?? 0) === 0) {
-            // Update state first so the Rooms.render() below paints 100%.
             State.updateCharValue(accessory.aid, brightChar.iid, 100);
             API.setCharacteristic(uniqueId, 'Brightness', 100)
               .catch(() => { /* secondary; ignore */ });
           }
         }
 
+        // Surgical refreshes: keeps the expanded card open and avoids
+        // a full re-render flicker. Rooms.render() handles the rooms
+        // list (counts on each room card).
+        this.updateBrightnessSlider(uniqueId);
         this.updateStatus(uniqueId);
         Rooms.render();
+        if (App.currentView === 'room' && State.currentRoomId) {
+          Rooms.refreshHeader?.(State.currentRoomId);
+        }
       })
       .catch(e => {
         this.updateIndicator(uniqueId, wasOn);
@@ -442,7 +448,7 @@ const Devices = {
       });
   },
 
-  // ── Slider interaction ─────────────────────────────
+  // ── Slider interaction ────────────────────────────
   startSlide(e) {
     e.preventDefault();
     const track = e.currentTarget;
@@ -684,7 +690,7 @@ const Devices = {
     UI.toast('Device updated');
   },
 
-  // ── Favorites ─────────────────────────────────────
+  // ── Favorites ───────────────────────────────────
   toggleFav(uniqueId) {
     State.toggleFav(uniqueId);
     const star = document.querySelector(`#card-${uniqueId} [data-star]`);
@@ -709,6 +715,22 @@ const Devices = {
     if (!accessory) return;
     const st = document.getElementById(`st-${uniqueId}`);
     if (st) st.textContent = UI.deviceStatus(accessory);
+  },
+
+  // Reflect on/off + current brightness in the slider DOM. cardHTML
+  // initially renders width as `isOn ? brightness : 0`, but state changes
+  // after that don't repaint without a full re-render — so we surgically
+  // sync here whenever brightness or on-state changes.
+  updateBrightnessSlider(uniqueId) {
+    const acc = State.getAccessory(uniqueId);
+    if (!acc) return;
+    const brightness = State.getCharValue(acc, 'Brightness');
+    if (brightness == null) return;
+    const display = State.isOn(acc) ? brightness : 0;
+    const fill = document.getElementById(`fill-${uniqueId}-brightness`);
+    const val = document.getElementById(`val-${uniqueId}-brightness`);
+    if (fill) fill.style.width = display + '%';
+    if (val) val.textContent = Math.round(display) + '%';
   },
 
 };

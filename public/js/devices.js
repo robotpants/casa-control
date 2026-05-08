@@ -572,7 +572,7 @@ const Devices = {
         </select>
       </div>
       <div class="modal-field">
-        <label>Type</label>
+        <label>Functions As</label>
         <select class="modal-input" id="deviceTypeSelect">
           <option value="">Auto-detect (${State.TYPE_LABELS[State.autoType(acc)] || State.autoType(acc)})</option>
           ${Object.entries(State.TYPE_LABELS).map(([k, label]) =>

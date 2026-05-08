@@ -20,6 +20,35 @@
 /* ── Light card offline state ──────────────────────── */
 .light-card.offline { opacity: .5; }
 
+/* ── Room card type-breakdown chips ────────────────── */
+.room-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.room-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(0,0,0,.04);
+  line-height: 1;
+}
+[data-theme="dark"] .room-type-chip { background: rgba(255,255,255,.05); }
+
+.room-type-chip.active {
+  background: rgba(232,101,58,.15);
+  color: var(--accent);
+}
+
+.room-type-chip .icon { font-size: 11px; }
+
 /* ── Debug info inside expand panel ────────────────── */
 .device-debug {
   font-family: var(--font-mono);

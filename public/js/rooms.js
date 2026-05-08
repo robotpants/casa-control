@@ -13,16 +13,23 @@ const Rooms = {
     grid.innerHTML = State.rooms.map((room, ri) => {
       const accessories = State.getRoomAccessories(room.id);
       const total = accessories.length;
-      const on = accessories.filter(a => State.isOn(a)).length;
-      const sub = total > 0 ? `${total} devices · ${on} on` : 'No devices yet';
-      const hasActive = on > 0;
+      const breakdown = this._roomBreakdown(accessories);
+      const hasActive = breakdown.some(b => b.on > 0);
+
+      const chipsHTML = breakdown.length === 0
+        ? '<div class="room-sub">No devices yet</div>'
+        : `<div class="room-types">${breakdown.map(b => `
+            <span class="room-type-chip ${b.on > 0 ? 'active' : ''}" title="${b.label}">
+              ${ic(b.icon, 11)}
+              <span>${b.on > 0 ? `${b.on}/${b.total}` : b.total}</span>
+            </span>`).join('')}</div>`;
 
       return `
         <div class="room-card neu-raised ${State.editMode ? 'editing' : ''} ${!hasActive ? 'inactive' : ''}"
              onclick="${State.editMode ? `Rooms.openEditModal('${room.id}')` : `Rooms.openRoom('${room.id}')`}">
           <span class="room-icon-wrap">${ic(room.icon, 28)}</span>
           <h3>${room.name}</h3>
-          <div class="room-sub">${sub}</div>
+          ${chipsHTML}
           <div class="room-active-dot"></div>
           ${State.editMode ? `
             <div class="delete-btn neu-btn" onclick="event.stopPropagation();Rooms.confirmDelete('${room.id}')">
@@ -44,6 +51,27 @@ const Rooms = {
     // Update active light count
     const countEl = document.getElementById('activeLightCount');
     if (countEl) countEl.textContent = State.getActiveLightCount();
+  },
+
+  // ── Per-room device breakdown by category ─────────
+  // Returns one entry per non-empty type with total/on counts so the
+  // room card can show "💡 2/3 · 🌀 1" style chips at a glance.
+  _roomBreakdown(accessories) {
+    const order = [
+      { type: 'light',    icon: 'lightbulb',   label: 'Lights' },
+      { type: 'switch',   icon: 'plug',        label: 'Switches' },
+      { type: 'fan',      icon: 'wind',        label: 'Fans' },
+      { type: 'purifier', icon: 'airVent',     label: 'Air purifiers' },
+      { type: 'heater',   icon: 'flame',       label: 'Heaters' },
+      { type: 'sensor',   icon: 'thermometer', label: 'Sensors' },
+      { type: 'remote',   icon: 'radio',       label: 'Remotes' },
+    ];
+    return order
+      .map(o => {
+        const items = accessories.filter(a => State.getType(a) === o.type);
+        return { ...o, total: items.length, on: items.filter(a => State.isOn(a)).length };
+      })
+      .filter(b => b.total > 0);
   },
 
   // ── Open Room Detail ──────────────────────────────

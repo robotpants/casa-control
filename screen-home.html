@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smartmorphic — Home</title>
+<link rel="stylesheet" href="smartmorphic.css">
+</head>
+<body>
+<div class="app">
+  <div class="view stagger">
+    <div class="home-header">
+      <div class="greeting">
+        <h1>Good Evening</h1>
+        <div class="sub">Tuesday · 7:24 PM · 73°F</div>
+      </div>
+      <button class="neu-btn"><span class="icon" data-icon="bell"></span></button>
+    </div>
+
+    <div class="status-row">
+      <div class="status-card"><div class="status-icon"><span class="icon" data-icon="thermometer"></span></div><div class="status-value">73°F</div><div class="status-label">Indoor</div></div>
+      <div class="status-card"><div class="status-icon"><span class="icon" data-icon="droplet"></span></div><div class="status-value">42%</div><div class="status-label">Humidity</div></div>
+      <div class="status-card"><div class="status-icon"><span class="icon" data-icon="lightbulb"></span></div><div class="status-value">7 / 24</div><div class="status-label">Lights On</div></div>
+      <div class="status-card"><div class="status-icon"><span class="icon" data-icon="shield"></span></div><div class="status-value">Armed</div><div class="status-label">Security</div></div>
+    </div>
+
+    <div class="section-label">Quick Scenes</div>
+    <div class="scene-scroll">
+      <div class="scene-chip"><span class="chip-dot"></span>Good Morning</div>
+      <div class="scene-chip active"><span class="chip-dot"></span>Movie Night</div>
+      <div class="scene-chip"><span class="chip-dot"></span>Focus</div>
+      <div class="scene-chip"><span class="chip-dot"></span>Away</div>
+      <div class="scene-chip"><span class="chip-dot"></span>Goodnight</div>
+    </div>
+
+    <div class="section-label">Rooms</div>
+    <div class="room-grid">
+      <div class="room-card"><span class="room-active-dot"></span><span class="room-icon-wrap"><span class="icon" data-icon="sofa"></span></span><h3>Living Room</h3><div class="room-sub">5 devices · 3 on</div><div class="room-temp"><span class="icon" data-icon="thermometer"></span> 72°F</div></div>
+      <div class="room-card inactive"><span class="room-active-dot"></span><span class="room-icon-wrap"><span class="icon" data-icon="bed"></span></span><h3>Bedroom</h3><div class="room-sub">4 devices · 0 on</div><div class="room-temp"><span class="icon" data-icon="thermometer"></span> 68°F</div></div>
+      <div class="room-card"><span class="room-active-dot"></span><span class="room-icon-wrap"><span class="icon" data-icon="chefHat"></span></span><h3>Kitchen</h3><div class="room-sub">6 devices · 2 on</div><div class="room-temp"><span class="icon" data-icon="thermometer"></span> 73°F</div></div>
+      <div class="room-card inactive"><span class="room-active-dot"></span><span class="room-icon-wrap"><span class="icon" data-icon="bath"></span></span><h3>Bathroom</h3><div class="room-sub">2 devices · 0 on</div></div>
+      <div class="add-room-card"><span class="icon" data-icon="plus" style="font-size:20px"></span><span>Add room</span></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active"><span class="nav-icon icon" data-icon="home"></span><span class="nav-label">HOME</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="layers"></span><span class="nav-label">DEVICES</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="shield"></span><span class="nav-label">SECURITY</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="settings"></span><span class="nav-label">SETTINGS</span></div>
+  </nav>
+</div>
+
+<script src="icons.js"></script>
+<script>document.querySelectorAll('[data-icon]').forEach(el=>{const s=SmartmorphicIcons.I[el.dataset.icon];if(s)el.innerHTML=s;});</script>
+</body>
+</html>

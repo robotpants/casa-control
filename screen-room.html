@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smartmorphic — Living Room</title>
+<link rel="stylesheet" href="smartmorphic.css">
+</head>
+<body>
+<div class="app">
+  <div class="view stagger">
+    <div class="room-header">
+      <button class="neu-btn"><span class="icon" data-icon="chevronLeft"></span></button>
+      <div class="room-title-block">
+        <h1>Living Room</h1>
+        <div class="sub">5 devices · 3 active · 72°F</div>
+      </div>
+      <button class="neu-btn"><span class="icon" data-icon="settings"></span></button>
+    </div>
+
+    <div class="master-row">
+      <div class="master-info">
+        <h3>Master</h3>
+        <span>All lights, fan, and TV</span>
+      </div>
+      <div class="toggle on no-label"><span class="knob"></span></div>
+    </div>
+
+    <div class="section-label">Scenes</div>
+    <div class="scene-scroll">
+      <div class="scene-chip active"><span class="chip-dot"></span>Movie</div>
+      <div class="scene-chip"><span class="chip-dot"></span>Reading</div>
+      <div class="scene-chip"><span class="chip-dot"></span>Bright</div>
+      <div class="scene-chip"><span class="chip-dot"></span>Off</div>
+    </div>
+
+    <div class="section-label">Lights</div>
+    <div class="light-list">
+      <div class="light-card expanded">
+        <div class="light-top">
+          <div class="icon-well on"><span class="icon" data-icon="lightbulb"></span></div>
+          <div class="light-info">
+            <div class="light-name">Pendant Light</div>
+            <div class="light-status">On · 80% · Warm 2700K</div>
+          </div>
+          <div class="toggle on no-label"><span class="knob"></span></div>
+          <span class="expand-btn icon" data-icon="chevronDown"></span>
+        </div>
+        <div class="light-controls">
+          <div class="slider-row"><span class="slider-label">Bri</span><div class="slider-track"><div class="slider-fill brightness" style="width:80%"><span class="slider-knob"></span></div></div><span class="slider-value">80%</span></div>
+          <div class="slider-row"><span class="slider-label">Temp</span><div class="slider-track"><div class="slider-fill temp" style="width:18%"><span class="slider-knob"></span></div></div><span class="slider-value">2700K</span></div>
+          <div class="color-row">
+            <span class="color-label">Color</span>
+            <span class="color-dot selected" style="background:#ffd9a8;color:#ffd9a8"></span>
+            <span class="color-dot" style="background:#e8653a"></span>
+            <span class="color-dot" style="background:#3a8ee8"></span>
+            <span class="color-dot" style="background:#3abf7a"></span>
+            <span class="color-dot" style="background:#9b59b6"></span>
+            <span class="color-dot" style="background:#e84a7a"></span>
+          </div>
+        </div>
+      </div>
+      <div class="light-card">
+        <div class="light-top">
+          <div class="icon-well on"><span class="icon" data-icon="lampDesk"></span></div>
+          <div class="light-info">
+            <div class="light-name">Reading Lamp</div>
+            <div class="light-status">On · 50% · Soft 3000K</div>
+          </div>
+          <div class="toggle on no-label"><span class="knob"></span></div>
+          <span class="expand-btn icon" data-icon="chevronDown"></span>
+        </div>
+      </div>
+      <div class="light-card">
+        <div class="light-top">
+          <div class="icon-well"><span class="icon" data-icon="lightStrip"></span></div>
+          <div class="light-info">
+            <div class="light-name">TV Backlight</div>
+            <div class="light-status">Off</div>
+          </div>
+          <div class="toggle no-label"><span class="knob"></span></div>
+          <span class="expand-btn icon" data-icon="chevronDown"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active"><span class="nav-icon icon" data-icon="home"></span><span class="nav-label">HOME</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="layers"></span><span class="nav-label">DEVICES</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="shield"></span><span class="nav-label">SECURITY</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="settings"></span><span class="nav-label">SETTINGS</span></div>
+  </nav>
+</div>
+
+<script src="icons.js"></script>
+<script>document.querySelectorAll('[data-icon]').forEach(el=>{const s=SmartmorphicIcons.I[el.dataset.icon];if(s)el.innerHTML=s;});</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smartmorphic — Devices</title>
+<link rel="stylesheet" href="smartmorphic.css">
+</head>
+<body>
+<div class="app">
+  <div class="view stagger">
+    <div class="home-header">
+      <div class="greeting">
+        <h1>Devices</h1>
+        <div class="sub">24 paired · 22 online</div>
+      </div>
+      <button class="neu-btn"><span class="icon" data-icon="plus"></span></button>
+    </div>
+
+    <div class="dev-summary">
+      <div class="dev-summary-card"><div class="ds-val">24</div><div class="ds-label">Total</div></div>
+      <div class="dev-summary-card"><div class="ds-val">22</div><div class="ds-label">Online</div></div>
+      <div class="dev-summary-card"><div class="ds-val">7</div><div class="ds-label">Active</div></div>
+    </div>
+
+    <div class="dev-group">
+      <div class="dev-group-header">
+        <span class="dg-icon icon" data-icon="lightbulb"></span>
+        <h3>Lighting</h3>
+        <span class="dg-count">8 devices</span>
+      </div>
+      <div class="dev-item">
+        <div class="di-icon on"><span class="icon" data-icon="lightbulb"></span><span class="di-swatch"></span></div>
+        <div class="di-info"><div class="di-name">Pendant Light</div><div class="di-room">Living Room</div></div>
+        <div class="toggle on no-label"><span class="knob"></span></div>
+      </div>
+      <div class="dev-item">
+        <div class="di-icon on"><span class="icon" data-icon="lampDesk"></span></div>
+        <div class="di-info"><div class="di-name">Reading Lamp</div><div class="di-room">Living Room</div></div>
+        <div class="toggle on no-label"><span class="knob"></span></div>
+      </div>
+      <div class="dev-item">
+        <div class="di-icon"><span class="icon" data-icon="recessed"></span></div>
+        <div class="di-info"><div class="di-name">Kitchen Cans</div><div class="di-room">Kitchen</div></div>
+        <div class="toggle no-label"><span class="knob"></span></div>
+      </div>
+    </div>
+
+    <div class="dev-group">
+      <div class="dev-group-header">
+        <span class="dg-icon icon" data-icon="thermometer"></span>
+        <h3>Climate</h3>
+        <span class="dg-count">4 devices</span>
+      </div>
+      <div class="dev-item">
+        <div class="di-icon on"><span class="icon" data-icon="thermometer"></span></div>
+        <div class="di-info"><div class="di-name">Hallway Thermostat</div><div class="di-room">Hallway · 73°F</div></div>
+        <span class="status-pill ok">Online</span>
+      </div>
+    </div>
+
+    <div class="dev-group">
+      <div class="dev-group-header">
+        <span class="dg-icon icon" data-icon="shield"></span>
+        <h3>Security</h3>
+        <span class="dg-count">5 devices</span>
+      </div>
+      <div class="dev-item">
+        <div class="di-icon on"><span class="icon" data-icon="motion"></span></div>
+        <div class="di-info"><div class="di-name">Hallway Motion</div><div class="di-room">Battery 92%</div></div>
+        <span class="status-pill ok">Normal</span>
+      </div>
+      <div class="dev-item">
+        <div class="di-icon"><span class="icon" data-icon="key"></span></div>
+        <div class="di-info"><div class="di-name">Front Door Lock</div><div class="di-room">Locked · Battery 67%</div></div>
+        <span class="status-pill ok">Locked</span>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item"><span class="nav-icon icon" data-icon="home"></span><span class="nav-label">HOME</span></div>
+    <div class="nav-item active"><span class="nav-icon icon" data-icon="layers"></span><span class="nav-label">DEVICES</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="shield"></span><span class="nav-label">SECURITY</span></div>
+    <div class="nav-item"><span class="nav-icon icon" data-icon="settings"></span><span class="nav-label">SETTINGS</span></div>
+  </nav>
+</div>
+
+<script src="icons.js"></script>
+<script>document.querySelectorAll('[data-icon]').forEach(el=>{const s=SmartmorphicIcons.I[el.dataset.icon];if(s)el.innerHTML=s;});</script>
+</body>
+</html>

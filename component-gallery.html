@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smartmorphic — Component Gallery</title>
+<link rel="stylesheet" href="smartmorphic.css">
+<style>
+  body { padding: 32px 24px 80px; }
+  .gallery { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+  .head h1 { font-family: var(--font-display); font-size: 32px; margin-bottom: 4px; }
+  .head p { color: var(--text-secondary); font-size: 14px; max-width: 560px; }
+  .head .legend { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 14px; }
+  .group h2 { font-family: var(--font-display); font-size: 18px; margin-bottom: 4px; }
+  .group .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-bottom: 16px; letter-spacing: .3px; }
+  .demo-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .stage { background: var(--surface); padding: 24px; border-radius: var(--radius); box-shadow: var(--neu-pressed-sm); }
+  .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 999; }
+</style>
+</head>
+<body>
+
+<button class="neu-btn-rect theme-toggle" onclick="document.documentElement.toggleAttribute('data-theme-dark') || document.documentElement.toggleAttribute('data-theme-dark'); var d=document.documentElement; if(d.getAttribute('data-theme')==='dark'){d.removeAttribute('data-theme')}else{d.setAttribute('data-theme','dark')}">Toggle theme</button>
+
+<div class="gallery">
+
+<div class="head">
+  <h1>Smartmorphic — Component Gallery</h1>
+  <p>Every component pattern in plain HTML/CSS. Copy the markup straight; styles all come from <span class="mono">smartmorphic.css</span>.</p>
+  <p class="legend">Single surface · Shadow expresses depth · Accent #e8653a is rare</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Neu primitives</h2>
+  <p class="meta">.neu-raised · .neu-raised-sm · .neu-pressed</p>
+  <div class="demo-row">
+    <div class="neu-raised" style="width:140px;height:90px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary)">neu-raised</div>
+    <div class="neu-raised-sm" style="width:140px;height:90px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary)">neu-raised-sm</div>
+    <div class="neu-pressed" style="width:140px;height:90px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary)">neu-pressed</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Buttons</h2>
+  <p class="meta">.neu-btn · .neu-btn-rect · .btn-primary</p>
+  <div class="demo-row">
+    <button class="neu-btn"><span class="icon" data-icon="settings"></span></button>
+    <button class="neu-btn active"><span class="icon" data-icon="moon"></span></button>
+    <button class="neu-btn-rect"><span class="icon" data-icon="plus"></span> Add device</button>
+    <button class="neu-btn-rect active"><span class="icon" data-icon="check"></span> Active</button>
+    <button class="btn-primary">Save changes</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Toggle</h2>
+  <p class="meta">.toggle / .toggle.on (knob is always white; off-track is #c4c7d4)</p>
+  <div class="demo-row">
+    <div class="toggle no-label" role="switch" aria-checked="false"><span class="knob"></span></div>
+    <div class="toggle on no-label" role="switch" aria-checked="true"><span class="knob"></span></div>
+    <div class="toggle" role="switch" aria-checked="false"><span class="knob"></span><span class="label">OFF</span></div>
+    <div class="toggle on" role="switch" aria-checked="true"><span class="label">ON</span><span class="knob"></span></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Slider</h2>
+  <p class="meta">.slider-track > .slider-fill (.brightness | .temp) > .slider-knob</p>
+  <div class="stage" style="display:flex;flex-direction:column;gap:8px">
+    <div class="slider-row">
+      <span class="slider-label">Bri</span>
+      <div class="slider-track"><div class="slider-fill brightness" style="width:72%"><span class="slider-knob"></span></div></div>
+      <span class="slider-value">72%</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Temp</span>
+      <div class="slider-track"><div class="slider-fill temp" style="width:55%"><span class="slider-knob"></span></div></div>
+      <span class="slider-value">3400K</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Scene chips</h2>
+  <p class="meta">.scene-chip / .scene-chip.active (active = pressed inset, accent text — never fills)</p>
+  <div class="scene-scroll">
+    <div class="scene-chip"><span class="chip-dot"></span>Good Morning</div>
+    <div class="scene-chip active"><span class="chip-dot"></span>Movie Night</div>
+    <div class="scene-chip"><span class="chip-dot"></span>Focus</div>
+    <div class="scene-chip"><span class="chip-dot"></span>Away</div>
+    <div class="scene-chip"><span class="chip-dot"></span>Goodnight</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Status pills</h2>
+  <p class="meta">.status-pill.ok · .warning · .alert · .info</p>
+  <div class="demo-row">
+    <span class="status-pill ok">Online</span>
+    <span class="status-pill warning">Updating</span>
+    <span class="status-pill alert">Offline</span>
+    <span class="status-pill info">Paired</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Status tiles (4-up)</h2>
+  <p class="meta">.status-row > .status-card</p>
+  <div class="status-row">
+    <div class="status-card">
+      <div class="status-icon"><span class="icon" data-icon="thermometer"></span></div>
+      <div class="status-value">73°F</div>
+      <div class="status-label">Indoor</div>
+    </div>
+    <div class="status-card">
+      <div class="status-icon"><span class="icon" data-icon="droplet"></span></div>
+      <div class="status-value">42%</div>
+      <div class="status-label">Humidity</div>
+    </div>
+    <div class="status-card">
+      <div class="status-icon"><span class="icon" data-icon="lightbulb"></span></div>
+      <div class="status-value">7 / 24</div>
+      <div class="status-label">Lights on</div>
+    </div>
+    <div class="status-card">
+      <div class="status-icon"><span class="icon" data-icon="shield"></span></div>
+      <div class="status-value">Armed</div>
+      <div class="status-label">Security</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Room cards</h2>
+  <p class="meta">.room-card (active dot pulses) · .add-room-card</p>
+  <div class="room-grid">
+    <div class="room-card">
+      <span class="room-active-dot"></span>
+      <span class="room-icon-wrap"><span class="icon" data-icon="sofa"></span></span>
+      <h3>Living Room</h3>
+      <div class="room-sub">5 devices · 3 on</div>
+      <div class="room-temp"><span class="icon" data-icon="thermometer"></span> 72°F</div>
+    </div>
+    <div class="room-card inactive">
+      <span class="room-active-dot"></span>
+      <span class="room-icon-wrap"><span class="icon" data-icon="bed"></span></span>
+      <h3>Bedroom</h3>
+      <div class="room-sub">4 devices · 0 on</div>
+      <div class="room-temp"><span class="icon" data-icon="thermometer"></span> 68°F</div>
+    </div>
+    <div class="add-room-card">
+      <span class="icon" data-icon="plus" style="font-size:20px"></span>
+      <span>Add room</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Light card (collapsed + expanded)</h2>
+  <p class="meta">.light-card / .light-card.expanded (toggle the class)</p>
+  <div class="light-list">
+    <div class="light-card">
+      <div class="light-top">
+        <div class="icon-well on"><span class="icon" data-icon="lightbulb"></span></div>
+        <div class="light-info">
+          <div class="light-name">Pendant Light</div>
+          <div class="light-status">On · 80% · Warm 2700K</div>
+        </div>
+        <div class="toggle on no-label"><span class="knob"></span></div>
+        <span class="expand-btn icon" data-icon="chevronDown"></span>
+      </div>
+    </div>
+    <div class="light-card expanded">
+      <div class="light-top">
+        <div class="icon-well on"><span class="icon" data-icon="lightbulb"></span></div>
+        <div class="light-info">
+          <div class="light-name">Reading Lamp</div>
+          <div class="light-status">On · 50% · Soft 3000K</div>
+        </div>
+        <div class="toggle on no-label"><span class="knob"></span></div>
+        <span class="expand-btn icon" data-icon="chevronDown"></span>
+      </div>
+      <div class="light-controls">
+        <div class="slider-row">
+          <span class="slider-label">Bri</span>
+          <div class="slider-track"><div class="slider-fill brightness" style="width:50%"><span class="slider-knob"></span></div></div>
+          <span class="slider-value">50%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Temp</span>
+          <div class="slider-track"><div class="slider-fill temp" style="width:35%"><span class="slider-knob"></span></div></div>
+          <span class="slider-value">3000K</span>
+        </div>
+        <div class="color-row">
+          <span class="color-label">Color</span>
+          <span class="color-dot" style="background:#ffd9a8"></span>
+          <span class="color-dot selected" style="background:#e8653a;color:#e8653a"></span>
+          <span class="color-dot" style="background:#3a8ee8"></span>
+          <span class="color-dot" style="background:#3abf7a"></span>
+          <span class="color-dot" style="background:#9b59b6"></span>
+          <span class="color-dot" style="background:#e84a7a"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Device row</h2>
+  <p class="meta">.dev-summary · .dev-group · .dev-item</p>
+  <div class="dev-summary">
+    <div class="dev-summary-card">
+      <div class="ds-val">24</div>
+      <div class="ds-label">Total</div>
+    </div>
+    <div class="dev-summary-card">
+      <div class="ds-val">22</div>
+      <div class="ds-label">Online</div>
+    </div>
+    <div class="dev-summary-card">
+      <div class="ds-val">7</div>
+      <div class="ds-label">Active</div>
+    </div>
+  </div>
+  <div class="dev-group">
+    <div class="dev-group-header">
+      <span class="dg-icon icon" data-icon="lightbulb"></span>
+      <h3>Lighting</h3>
+      <span class="dg-count">8 devices</span>
+    </div>
+    <div class="dev-item">
+      <div class="di-icon on"><span class="icon" data-icon="lightbulb"></span><span class="di-swatch"></span></div>
+      <div class="di-info">
+        <div class="di-name">Pendant Light</div>
+        <div class="di-room">Living Room</div>
+      </div>
+      <div class="toggle on no-label"><span class="knob"></span></div>
+    </div>
+    <div class="dev-item">
+      <div class="di-icon"><span class="icon" data-icon="lampDesk"></span></div>
+      <div class="di-info">
+        <div class="di-name">Reading Lamp</div>
+        <div class="di-room">Bedroom</div>
+      </div>
+      <div class="toggle no-label"><span class="knob"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Security — banner / camera / detector</h2>
+  <p class="meta">.sec-banner · .cam-card · .det-card</p>
+  <div class="sec-banner">
+    <div class="sb-icon ok"><span class="icon" data-icon="shield"></span></div>
+    <div class="sb-info">
+      <h3>System Armed</h3>
+      <span>All sensors normal · Last event 2h ago</span>
+    </div>
+  </div>
+  <div class="cam-card">
+    <div class="cam-preview">
+      <div class="cam-placeholder">
+        <span class="icon" data-icon="camera" style="font-size:24px"></span>
+        Front Door
+      </div>
+      <div class="cam-live-dot"><span class="dot"></span> LIVE</div>
+    </div>
+    <div class="cam-info">
+      <h3>Front Door</h3>
+      <span>1080p · Motion 12m ago</span>
+    </div>
+  </div>
+  <div class="det-card">
+    <div class="det-icon ok"><span class="icon" data-icon="motion"></span></div>
+    <div class="det-info">
+      <h3>Hallway Motion</h3>
+      <span>Battery 92%</span>
+    </div>
+    <span class="det-badge ok">Normal</span>
+  </div>
+  <div class="det-card">
+    <div class="det-icon alert"><span class="icon" data-icon="smoke"></span></div>
+    <div class="det-info">
+      <h3>Kitchen Smoke</h3>
+      <span>Battery 18%</span>
+    </div>
+    <span class="det-badge alert">Low</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Settings row</h2>
+  <p class="meta">.settings-item</p>
+  <div class="settings-group">
+    <div class="settings-item">
+      <div class="left">
+        <div class="s-icon"><span class="icon" data-icon="bell"></span></div>
+        <div>
+          <div class="s-label">Notifications</div>
+          <div class="s-sub">Push, email, in-app</div>
+        </div>
+      </div>
+      <div class="toggle on no-label"><span class="knob"></span></div>
+    </div>
+    <div class="settings-item">
+      <div class="left">
+        <div class="s-icon"><span class="icon" data-icon="moon"></span></div>
+        <div>
+          <div class="s-label">Dark mode</div>
+          <div class="s-sub">Match system</div>
+        </div>
+      </div>
+      <div class="toggle no-label"><span class="knob"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Bottom nav (mobile) → side rail (≥768px)</h2>
+  <p class="meta">.bottom-nav > .nav-item</p>
+  <div class="stage" style="padding:0;height:84px;position:relative;border-radius:var(--radius);overflow:hidden">
+    <nav class="bottom-nav" style="position:absolute;left:0;right:0;bottom:0;transform:none;max-width:100%">
+      <div class="nav-item active">
+        <span class="nav-icon icon" data-icon="home"></span>
+        <span class="nav-label">HOME</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon icon" data-icon="layers"></span>
+        <span class="nav-label">DEVICES</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon icon" data-icon="shield"></span>
+        <span class="nav-label">SECURITY</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon icon" data-icon="settings"></span>
+        <span class="nav-label">SETTINGS</span>
+      </div>
+    </nav>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<div class="group">
+  <h2>Type system</h2>
+  <p class="meta">Outfit display · DM Sans body · JetBrains Mono technical</p>
+  <div class="stage" style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <span class="eyebrow">Eyebrow / Section Label</span>
+      <h1 style="margin-top:4px">Heading 1 — Outfit 600</h1>
+      <h2>Heading 2 — Outfit 600</h2>
+      <h3>Heading 3 — DM Sans 600</h3>
+    </div>
+    <p>Body text — DM Sans 400 14px / 1.5. Used for descriptions, labels, and most UI copy.</p>
+    <p style="font-size:13px;color:var(--text-secondary)">Sub copy — 13px secondary text color.</p>
+    <div class="stat-num">73°F</div>
+    <code class="mono" style="font-size:12px;color:var(--text-secondary)">cluster: 0x0006 (OnOff) · attr: 0x0000</code>
+  </div>
+</div>
+
+</div>
+
+<!-- Inflate icons from icons.js by [data-icon] attribute -->
+<script src="icons.js"></script>
+<script>
+  document.querySelectorAll('[data-icon]').forEach(el => {
+    const name = el.getAttribute('data-icon');
+    const svg = SmartmorphicIcons.I[name];
+    if (svg) el.innerHTML = svg;
+  });
+</script>
+</body>
+</html>

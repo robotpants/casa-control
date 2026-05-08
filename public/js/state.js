@@ -353,12 +353,28 @@ const State = {
       return out;
     };
     let dirty = false;
+    // Pass 1: resolve sibling uids → primary uids within each room.
     for (const r of this.rooms) {
       const fixed = resolveList(r.deviceIds);
       if (JSON.stringify(fixed) !== JSON.stringify(r.deviceIds)) {
         r.deviceIds = fixed;
         dirty = true;
       }
+    }
+    // Pass 2: enforce one-room-per-device. Earlier grouping bugs (Lutron
+    // aid-collision with Hue) and re-bundling could leave the same uid
+    // listed in multiple rooms' deviceIds. Keep only the first occurrence
+    // in iteration order; the user can re-assign via the Manage modal if
+    // it landed in the wrong room.
+    const seenAcrossRooms = new Set();
+    for (const r of this.rooms) {
+      const before = (r.deviceIds || []).join(',');
+      r.deviceIds = (r.deviceIds || []).filter(id => {
+        if (seenAcrossRooms.has(id)) return false;
+        seenAcrossRooms.add(id);
+        return true;
+      });
+      if (r.deviceIds.join(',') !== before) dirty = true;
     }
     if (dirty) this.saveRooms();
 

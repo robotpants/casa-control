@@ -19,7 +19,7 @@ const Rooms = {
 
       return `
         <div class="room-card neu-raised ${State.editMode ? 'editing' : ''} ${!hasActive ? 'inactive' : ''}"
-             onclick="${State.editMode ? '' : `Rooms.openRoom('${room.id}')`}">
+             onclick="${State.editMode ? `Rooms.openEditModal('${room.id}')` : `Rooms.openRoom('${room.id}')`}">
           <span class="room-icon-wrap">${ic(room.icon, 28)}</span>
           <h3>${room.name}</h3>
           <div class="room-sub">${sub}</div>
@@ -159,6 +159,7 @@ const Rooms = {
     const room = State.rooms.find(r => r.id === id);
     if (!room) return;
     State._selectedIcon = room.icon;
+
     UI.openModal(`
       <h2>Edit Room</h2>
       <div class="modal-field">
@@ -169,6 +170,10 @@ const Rooms = {
         <label>Icon</label>
         <div class="icon-grid">${Rooms._iconGrid(room.icon)}</div>
       </div>
+      <div class="modal-field">
+        <label>Devices</label>
+        <div class="device-pick-list">${this._devicePickHTML(id)}</div>
+      </div>
       <div class="modal-actions">
         <button class="modal-btn secondary" onclick="UI.closeModal()">Cancel</button>
         <button class="modal-btn primary" onclick="Rooms.saveEdit('${id}')">Save</button>
@@ -177,6 +182,49 @@ const Rooms = {
       const inp = document.getElementById('roomNameInput');
       if (inp) { inp.focus(); inp.select(); }
     }, 350);
+  },
+
+  // ── Device picker ──────────────────────────────────
+  // Grouped checklist of every controllable device.
+  // Shows current room of each device so user knows what they're moving.
+  _devicePickHTML(roomId) {
+    const all = State.getControllable();
+    const inRoom = new Set((State.rooms.find(r => r.id === roomId)?.deviceIds) || []);
+    const otherRoomFor = uid => State.rooms.find(r => r.id !== roomId && (r.deviceIds || []).includes(uid));
+
+    const grouped = {};
+    for (const a of all) {
+      const t = State.getType(a);
+      (grouped[t] = grouped[t] || []).push(a);
+    }
+
+    const order = [
+      ['light',    'Lights'],
+      ['switch',   'Switches'],
+      ['fan',      'Fans'],
+      ['purifier', 'Air Purifiers'],
+      ['heater',   'Heaters'],
+      ['sensor',   'Sensors'],
+      ['remote',   'Remotes'],
+    ];
+
+    return order
+      .filter(([k]) => grouped[k]?.length)
+      .map(([k, label]) => `
+        <div class="device-pick-group">
+          <div class="device-pick-label">${label}</div>
+          ${grouped[k].map(a => {
+            const checked = inRoom.has(a.uniqueId);
+            const other = !checked ? otherRoomFor(a.uniqueId) : null;
+            return `
+              <label class="device-pick-row ${checked ? 'checked' : ''}">
+                <input type="checkbox" class="device-pick-cb" data-uid="${a.uniqueId}" ${checked ? 'checked' : ''}>
+                <span class="device-pick-icon">${ic(UI.deviceIcon(a), 14)}</span>
+                <span class="device-pick-name">${a.serviceName}</span>
+                ${other ? `<span class="device-pick-other">${other.name}</span>` : ''}
+              </label>`;
+          }).join('')}
+        </div>`).join('');
   },
 
   addRoom() {
@@ -201,9 +249,31 @@ const Rooms = {
     if (!name) { UI.toast('Enter a room name'); return; }
     room.name = name;
     room.icon = State._selectedIcon || room.icon;
+
+    const checkedUids = Array.from(document.querySelectorAll('.device-pick-cb:checked'))
+      .map(cb => cb.dataset.uid);
+
+    // One-room-per-device: strip these uids out of every other room.
+    for (const r of State.rooms) {
+      if (r.id === id) continue;
+      r.deviceIds = (r.deviceIds || []).filter(uid => !checkedUids.includes(uid));
+    }
+    room.deviceIds = checkedUids;
+
     State.saveRooms();
     UI.closeModal();
     this.render();
+    if (State.currentRoomId === id && App.currentView === 'room') {
+      const accessories = State.getRoomAccessories(id);
+      const on = accessories.filter(a => State.isOn(a)).length;
+      const titleEl = document.getElementById('rvTitle');
+      const subEl = document.getElementById('rvSub');
+      if (titleEl) titleEl.textContent = name;
+      if (subEl) subEl.textContent = accessories.length
+        ? `${on} of ${accessories.length} on`
+        : 'No devices yet';
+      this.renderRoomContent(id);
+    }
     UI.toast(`${name} updated`);
   },
 

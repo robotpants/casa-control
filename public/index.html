@@ -85,6 +85,7 @@
         <h1 id="rvTitle"></h1>
         <div class="sub" id="rvSub"></div>
       </div>
+      <div class="header-btn neu-btn" id="rvEditBtn" onclick="Rooms.openEditModal(State.currentRoomId)" style="width:36px;height:36px"></div>
       <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
     </div>
     <div class="stagger" id="roomContent"></div>
@@ -136,10 +137,12 @@
 <script src="js/app.js"></script>
 
 <script>
-  // Set back button icon after scripts load
+  // Set static button icons after scripts load
   document.addEventListener('DOMContentLoaded', () => {
     const back = document.getElementById('backBtn');
     if (back) back.innerHTML = ic('chevLeft', 20);
+    const rvEdit = document.getElementById('rvEditBtn');
+    if (rvEdit) rvEdit.innerHTML = ic('edit', 16);
   });
 </script>
 

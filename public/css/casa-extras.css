@@ -25,6 +25,66 @@ body { zoom: var(--ui-scale); }
 /* ── Light card offline state ──────────────────────── */
 .light-card.offline { opacity: .5; }
 
+/* ── Room view: split header (stats | lights toggle) ── */
+.room-header-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+.room-header-split.stats-only { grid-template-columns: 1fr; }
+.room-header-split .master-row { margin-bottom: 0; }
+
+.room-stats-panel {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+
+.room-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.room-stat .rs-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  box-shadow: var(--neu-pressed-sm);
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.room-stat .rs-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 36px;
+}
+
+.room-stat .rs-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.room-stat.active .rs-icon { color: var(--accent); box-shadow: var(--neu-pressed-sm), 0 0 8px var(--accent-glow); }
+.room-stat.active .rs-value { color: var(--accent); }
+
+.room-stat.temp .rs-icon { color: #5b8ed8; }
+.room-stat.temp .rs-value { color: #5b8ed8; }
+[data-theme="dark"] .room-stat.temp .rs-icon { color: #9ec3eb; }
+[data-theme="dark"] .room-stat.temp .rs-value { color: #9ec3eb; }
+
 /* ── Room card type-breakdown chips ────────────────── */
 .room-types {
   display: flex;

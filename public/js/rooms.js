@@ -129,6 +129,8 @@ const Rooms = {
     const accessories = State.getRoomAccessories(id);
     const lights = accessories.filter(a => State.getType(a) === 'light');
     const lightsOn = lights.filter(a => State.isOn(a)).length;
+    const breakdown = this._roomBreakdown(accessories);
+    const temp = this._roomTemperature(accessories);
     const c = document.getElementById('roomContent');
 
     if (!accessories.length) {
@@ -140,6 +142,30 @@ const Rooms = {
       return;
     }
 
+    // Stats panel (left): temp + per-type counts with full labels
+    const statRows = [];
+    if (temp !== null) {
+      statRows.push(`
+        <div class="room-stat temp">
+          <span class="rs-icon">${ic('thermometer', 16)}</span>
+          <span class="rs-value">${temp}°</span>
+          <span class="rs-label">Temperature</span>
+        </div>`);
+    }
+    for (const b of breakdown) {
+      statRows.push(`
+        <div class="room-stat ${b.on > 0 ? 'active' : ''}">
+          <span class="rs-icon">${ic(b.icon, 16)}</span>
+          <span class="rs-value">${b.on > 0 ? `${b.on}/${b.total}` : b.total}</span>
+          <span class="rs-label">${b.label}</span>
+        </div>`);
+    }
+    const statsPanel = `
+      <div class="room-stats-panel neu-raised">
+        ${statRows.join('')}
+      </div>`;
+
+    // Master row (right): lights toggle
     const masterRow = lights.length ? `
       <div class="master-row neu-raised">
         <div class="master-info">
@@ -153,7 +179,10 @@ const Rooms = {
       </div>` : '';
 
     c.innerHTML = `
-      ${masterRow}
+      <div class="room-header-split ${lights.length ? '' : 'stats-only'}">
+        ${statsPanel}
+        ${masterRow}
+      </div>
       <div class="section-label">Devices</div>
       <div class="light-list" id="lightList"></div>`;
 

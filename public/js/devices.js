@@ -43,11 +43,11 @@ const Devices = {
 
     return `
       <div class="light-card ${isOffline ? 'offline' : ''}" id="card-${accessory.uniqueId}">
-        <div class="light-top" onclick="${hasControls ? `Devices.toggleExpand('${accessory.uniqueId}')` : ''}">
+        <div class="light-top" onclick="Devices.toggleExpand('${accessory.uniqueId}')">
           <div class="icon-well ${isOn ? 'on' : ''}" id="ind-${accessory.uniqueId}">
             ${ic(icon, 18)}
           </div>
-          <div class="light-info" onclick="event.stopPropagation();Devices.openManageModal('${accessory.uniqueId}')" title="Tap to rename or move">
+          <div class="light-info">
             <div class="light-name">${State.displayName(accessory)}</div>
             <div class="light-status" id="st-${accessory.uniqueId}">
               ${isOffline ? '<span style="color:var(--danger)">Offline</span>' : status}
@@ -59,10 +59,17 @@ const Devices = {
                 onclick="event.stopPropagation();Devices.toggleFav('${accessory.uniqueId}')">
             ${ic(isFav ? 'starFill' : 'star', 16)}
           </span>
+          <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;flex-shrink:0">${ic('chevDown', 14)}</span>
           ${this.toggleHTML(accessory, roomId)}
-          ${hasControls ? `<span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;flex-shrink:0">${ic('chevDown', 14)}</span>` : ''}
         </div>
-        ${hasControls ? `<div class="light-controls">${controls}</div>` : ''}
+        <div class="light-controls">
+          ${controls}
+          <div class="device-edit-row">
+            <button class="neu-btn-rect" type="button" onclick="event.stopPropagation();Devices.openManageModal('${accessory.uniqueId}')">
+              ${ic('edit', 14)}<span>Edit Device</span>
+            </button>
+          </div>
+        </div>
       </div>`;
   },
 
@@ -447,8 +454,10 @@ const Devices = {
     };
 
     let lastVal = update(e);
+    App._isSliding = true;
 
     const finish = async () => {
+      App._isSliding = false;
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', finish);
       document.removeEventListener('touchmove', onMove);

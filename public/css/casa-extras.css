@@ -20,6 +20,24 @@
 /* ── Light card offline state ──────────────────────── */
 .light-card.offline { opacity: .5; }
 
+/* ── Edit Device button (inside expand panel) ──────── */
+.device-edit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0,0,0,.05);
+}
+[data-theme="dark"] .device-edit-row { border-top-color: rgba(255,255,255,.06); }
+
+.device-edit-row .neu-btn-rect {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.device-edit-row .neu-btn-rect:hover { color: var(--text-primary); }
+.device-edit-row .neu-btn-rect .icon { font-size: 14px; }
+
 /* ── Edit mode (room cards) ────────────────────────── */
 .room-card .delete-btn,
 .room-card .edit-room-btn {

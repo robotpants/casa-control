@@ -32,9 +32,38 @@ const App = {
     try {
       const raw = await API.getAccessories();
       State.accessories = State.processAccessories(raw);
-      this.updateActiveView();
+
+      // Don't tear down the DOM if the user is mid-interaction:
+      // a modal is open, a card is expanded, or a slider is being dragged.
+      // Update the dynamic bits in place instead so expand/slide state survives.
+      const modalOpen = document.getElementById('modalOverlay')?.classList.contains('open');
+      const cardExpanded = !!document.querySelector('.light-card.expanded');
+      const isSliding = this._isSliding;
+      if (modalOpen || cardExpanded || isSliding) {
+        this._refreshInPlace();
+      } else {
+        this.updateActiveView();
+      }
     } catch (e) {
       console.warn('Refresh failed:', e.message);
+    }
+  },
+
+  // ── Surgical update — toggle/indicator/status only ─
+  _refreshInPlace() {
+    for (const acc of State.accessories) {
+      const uid = acc.uniqueId;
+      const ind = document.getElementById(`ind-${uid}`);
+      const tog = document.getElementById(`tog-${uid}`);
+      const st  = document.getElementById(`st-${uid}`);
+      if (!ind && !tog && !st) continue;
+      const isOn = State.isOn(acc);
+      const isOffline = acc.instance?.connectionFailedCount > 0;
+      if (ind) ind.classList.toggle('on', isOn);
+      if (tog) tog.classList.toggle('on', isOn);
+      if (st)  st.innerHTML = isOffline
+        ? '<span style="color:var(--danger)">Offline</span>'
+        : UI.deviceStatus(acc);
     }
   },
 

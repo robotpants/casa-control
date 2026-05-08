@@ -4,6 +4,11 @@
    tokens (vars) — never hard-coded colors or shadows.
    ───────────────────────────────────────────────────── */
 
+/* ── Global zoom — scale the whole UI proportionally ─ */
+/* Use --ui-scale to change. 1.0 = native; 1.25 = +25%. */
+:root { --ui-scale: 1.25; }
+body { zoom: var(--ui-scale); }
+
 /* ── View switching (multi-view single-page app) ────── */
 .view { display: none; }
 .view.active { display: block; animation: fadeIn .35s var(--ease-out); }

@@ -119,6 +119,10 @@ app.use('/api', (req, res) => {
       return res.status(500).json({ error: 'Auth failed', detail: err.message });
     }
     const hasBody = req.body && Object.keys(req.body).length > 0;
+    const isAccessoryWrite = req.method === 'PUT' && req.path.startsWith('/accessories/');
+    if (isAccessoryWrite) {
+      console.log(`[PUT ${req.path}] body: ${JSON.stringify(req.body)}`);
+    }
     hbRequest(
       req.method,
       '/api' + req.path + (req.url.includes('?') ? '?' + req.url.split('?')[1] : ''),
@@ -127,6 +131,9 @@ app.use('/api', (req, res) => {
         if (err) {
           console.error('HB request error:', err.message);
           return res.status(500).json({ error: err.message });
+        }
+        if (isAccessoryWrite) {
+          console.log(`[PUT ${req.path}] → ${status} ${typeof data === 'string' ? data.slice(0, 200) : JSON.stringify(data).slice(0, 200)}`);
         }
         res.status(status).json(data);
       }

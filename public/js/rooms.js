@@ -14,11 +14,18 @@ const Rooms = {
       const accessories = State.getRoomAccessories(room.id);
       const total = accessories.length;
       const breakdown = this._roomBreakdown(accessories);
+      const temp = this._roomTemperature(accessories);
       const hasActive = breakdown.some(b => b.on > 0);
 
-      const chipsHTML = breakdown.length === 0
+      const tempChip = temp !== null ? `
+        <span class="room-type-chip temp" title="Current temperature">
+          ${ic('thermometer', 11)}
+          <span>${temp}°</span>
+        </span>` : '';
+
+      const chipsHTML = (breakdown.length === 0 && temp === null)
         ? '<div class="room-sub">No devices yet</div>'
-        : `<div class="room-types">${breakdown.map(b => `
+        : `<div class="room-types">${tempChip}${breakdown.map(b => `
             <span class="room-type-chip ${b.on > 0 ? 'active' : ''}" title="${b.label}">
               ${ic(b.icon, 11)}
               <span>${b.on > 0 ? `${b.on}/${b.total}` : b.total}</span>
@@ -51,6 +58,22 @@ const Rooms = {
     // Update active light count
     const countEl = document.getElementById('activeLightCount');
     if (countEl) countEl.textContent = State.getActiveLightCount();
+  },
+
+  // ── Representative room temperature ───────────────
+  // Looks for any accessory in the room exposing CurrentTemperature
+  // (Temperature Sensor, Heater Cooler, some purifiers/sensors).
+  // Returns Fahrenheit rounded, or null if nothing usable.
+  _roomTemperature(accessories) {
+    for (const a of accessories) {
+      const chars = a.serviceCharacteristics || [];
+      const tChar = chars.find(c => c.type === 'CurrentTemperature');
+      if (!tChar) continue;
+      const v = tChar.value;
+      if (v === null || v === undefined || isNaN(v)) continue;
+      return Math.round(Number(v) * 9 / 5 + 32);
+    }
+    return null;
   },
 
   // ── Per-room device breakdown by category ─────────

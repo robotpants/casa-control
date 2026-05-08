@@ -47,6 +47,17 @@
   color: var(--accent);
 }
 
+/* Temperature chip — slightly emphasized, monospace value */
+.room-type-chip.temp {
+  background: rgba(58,142,232,.12);
+  color: #2a6db8;
+}
+[data-theme="dark"] .room-type-chip.temp {
+  background: rgba(120,170,230,.14);
+  color: #9ec3eb;
+}
+.room-type-chip.temp span { font-family: var(--font-mono); }
+
 .room-type-chip .icon { font-size: 11px; }
 
 /* ── Debug info inside expand panel ────────────────── */

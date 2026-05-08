@@ -8,7 +8,6 @@
 ### P2 — when convenient
 - **Prefs/rooms/favorites don't sync across devices.** Everything user-settable is in `localStorage` per-device, so house name, accent color, theme mode, ZIP, custom device names, type overrides, room layouts, and favorites are all isolated to whichever browser they were set in. Fix is server-side: add `/api/prefs` (GET/PUT) endpoint to server.js (FLAGGED) that reads/writes a JSON file on the Pi (e.g., `/var/lib/homebridge/dashboard/prefs.json`). Casa Control loads from server on init with localStorage as cache; saves push to server. Touches all `save*` / `load*` calls in state.js. Estimate ~1 hr (server endpoint + 5-6 save/load wrappers + migration + smoke test).
 - **Theme picker buttons lost their styling.** Settings → Appearance → Theme: the Light / Dark / Auto buttons render unstyled (no neumorphic background, no rounded corners, just bare icon + label). `.theme-mode-btn` CSS in casa-extras.css may have gotten dropped or overridden during one of the recent edits. Verify the class is present and that `.theme-mode-picker > .theme-mode-btn` selectors still apply. Quick repro: open Settings while in dark mode.
-- **Pico bundling pulled lights out of Lutron-switch rooms**: when serial-number-based grouping landed, lights driven by Lutron switches (Caseta) seem to have been re-keyed to a different primary uniqueId and the room migration didn't carry them across. Diagnose via the device debug panel — compare a missing light's `sn` / `aid` fields before and after.
 
 ## Features
 

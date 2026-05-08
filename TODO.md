@@ -5,10 +5,6 @@
 ### Watching (recently misbehaved)
 - **Devices won't turn OFF** — appeared to fix itself after a casa-control systemd restart on May 8. Server-side diagnostic logging captured all PUTs returning 200 OK once the issue cleared, suggesting the bug was a stale auth token or a desynced Hue eventstream rather than a code path. Logging is still in place (`server.js` logs `wrote On=X, response shows On=Y` for every accessory write) so if it returns we can immediately see whether Homebridge accepts but doesn't apply, or fails silently. If it reproduces, that disparity tells us where to look.
 
-### P2 — when convenient
-- **Prefs/rooms/favorites don't sync across devices.** Everything user-settable is in `localStorage` per-device, so house name, accent color, theme mode, ZIP, custom device names, type overrides, room layouts, and favorites are all isolated to whichever browser they were set in. Fix is server-side: add `/api/prefs` (GET/PUT) endpoint to server.js (FLAGGED) that reads/writes a JSON file on the Pi (e.g., `/var/lib/homebridge/dashboard/prefs.json`). Casa Control loads from server on init with localStorage as cache; saves push to server. Touches all `save*` / `load*` calls in state.js. Estimate ~1 hr (server endpoint + 5-6 save/load wrappers + migration + smoke test).
-- **Theme picker buttons lost their styling.** Settings → Appearance → Theme: the Light / Dark / Auto buttons render unstyled (no neumorphic background, no rounded corners, just bare icon + label). `.theme-mode-btn` CSS in casa-extras.css may have gotten dropped or overridden during one of the recent edits. Verify the class is present and that `.theme-mode-picker > .theme-mode-btn` selectors still apply. Quick repro: open Settings while in dark mode.
-
 ## Features
 
 ### Ecobee

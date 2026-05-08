@@ -5,6 +5,21 @@
 
 const Devices = {
 
+  // ── Color presets (real-world bulb colors, never UI accents) ─
+  TEMP_PRESETS: [
+    { key: 'warm',     name: 'Warm',     kelvin: 2700, swatch: '#f6cf99' },
+    { key: 'soft',     name: 'Soft',     kelvin: 3000, swatch: '#f8e4c4' },
+    { key: 'daylight', name: 'Daylight', kelvin: 5000, swatch: '#f4ecdb' },
+  ],
+
+  COLOR_PRESETS: [
+    { key: 'ember',  name: 'Ember',  hue: 12,  sat: 72, swatch: '#d75a3e' },
+    { key: 'amber',  name: 'Amber',  hue: 42,  sat: 70, swatch: '#dba63b' },
+    { key: 'green',  name: 'Green',  hue: 140, sat: 48, swatch: '#65b67c' },
+    { key: 'blue',   name: 'Blue',   hue: 215, sat: 60, swatch: '#5b8ed8' },
+    { key: 'purple', name: 'Purple', hue: 275, sat: 45, swatch: '#9170c4' },
+  ],
+
   // ── Render device list for a room ─────────────────
   renderList(roomId) {
     const list = document.getElementById('lightList');
@@ -112,19 +127,9 @@ const Devices = {
       }
 
       const tChar = findChar('ColorTemperature');
-      if (tChar) {
-        const minM = tChar.minValue ?? 140;
-        const maxM = tChar.maxValue ?? 500;
-        const step = tChar.minStep || 1;
-        const val = State.getCharValue(accessory, 'ColorTemperature') ?? minM;
-        html += this.colorSliderHTML(uid, 'temp', 'Temp', val, accessory.aid, 'ColorTemperature', tChar.iid, step, minM, maxM);
-      }
-
       const hChar = findChar('Hue');
-      if (hChar) {
-        const step = hChar.minStep || 1;
-        const val = State.getCharValue(accessory, 'Hue') ?? 0;
-        html += this.colorSliderHTML(uid, 'hue', 'Color', val, accessory.aid, 'Hue', hChar.iid, step, 0, 360);
+      if (tChar || hChar) {
+        html += this.colorPresetsHTML(accessory, tChar, hChar);
       }
     }
 
@@ -175,6 +180,117 @@ const Devices = {
         </div>
         <div class="slider-value" id="val-${uid}-${prop}">${Math.round(value)}%</div>
       </div>`;
+  },
+
+  // ── Color preset row (temp chips + color chips + Custom) ──
+  // Custom toggles a collapsible panel with the precise sliders.
+  colorPresetsHTML(accessory, tChar, hChar) {
+    const uid = accessory.uniqueId;
+
+    const tempChips = tChar ? this.TEMP_PRESETS.map(p => `
+      <button class="color-preset" type="button"
+              onclick="event.stopPropagation();Devices.applyTempPreset('${uid}', ${p.kelvin})"
+              title="${p.name} ${p.kelvin}K">
+        <span class="cp-swatch" style="background:${p.swatch}"></span>
+        <span class="cp-name">${p.name}</span>
+        <span class="cp-sub">${p.kelvin}K</span>
+      </button>`).join('') : '';
+
+    const colorChips = hChar ? this.COLOR_PRESETS.map(p => `
+      <button class="color-preset" type="button"
+              onclick="event.stopPropagation();Devices.applyColorPreset('${uid}', ${p.hue}, ${p.sat})"
+              title="${p.name}">
+        <span class="cp-swatch" style="background:${p.swatch}"></span>
+        <span class="cp-name">${p.name}</span>
+      </button>`).join('') : '';
+
+    const divider = (tChar && hChar) ? '<div class="cp-divider"></div>' : '';
+
+    let custom = '';
+    if (tChar) {
+      const minM = tChar.minValue ?? 140;
+      const maxM = tChar.maxValue ?? 500;
+      const step = tChar.minStep || 1;
+      const val = State.getCharValue(accessory, 'ColorTemperature') ?? minM;
+      custom += this.colorSliderHTML(uid, 'temp', 'Temp', val, accessory.aid, 'ColorTemperature', tChar.iid, step, minM, maxM);
+    }
+    if (hChar) {
+      const step = hChar.minStep || 1;
+      const val = State.getCharValue(accessory, 'Hue') ?? 0;
+      custom += this.colorSliderHTML(uid, 'hue', 'Color', val, accessory.aid, 'Hue', hChar.iid, step, 0, 360);
+    }
+
+    return `
+      <div class="color-controls" id="color-${uid}">
+        <div class="color-presets">
+          ${tempChips}
+          ${divider}
+          ${colorChips}
+          <button class="color-preset cp-custom" type="button"
+                  onclick="event.stopPropagation();Devices.toggleCustomColor('${uid}')"
+                  title="Custom">
+            <span class="cp-swatch cp-swatch-custom"></span>
+            <span class="cp-name">Custom</span>
+          </button>
+        </div>
+        <div class="color-custom" id="color-custom-${uid}">
+          ${custom}
+        </div>
+      </div>`;
+  },
+
+  // ── Apply a temp preset (Kelvin → mireds) ──────────
+  async applyTempPreset(uid, kelvin) {
+    const acc = State.getAccessory(uid);
+    if (!acc) return;
+    const tChar = (acc.serviceCharacteristics || []).find(c => c.type === 'ColorTemperature');
+    if (!tChar) return;
+    const minM = tChar.minValue ?? 140;
+    const maxM = tChar.maxValue ?? 500;
+    let mireds = Math.round(1000000 / kelvin);
+    mireds = Math.max(minM, Math.min(maxM, mireds));
+    try {
+      await API.setCharacteristic(uid, 'ColorTemperature', mireds);
+      State.updateCharValue(acc.aid, tChar.iid, mireds);
+      const knob = document.getElementById(`knob-${uid}-temp`);
+      const val = document.getElementById(`val-${uid}-temp`);
+      if (knob) knob.style.left = ((mireds - minM) / (maxM - minM)) * 100 + '%';
+      if (val) val.textContent = kelvin + 'K';
+    } catch (e) {
+      UI.toast('Failed to set color');
+      console.error(e);
+    }
+  },
+
+  // ── Apply a color preset (Hue + Saturation) ────────
+  async applyColorPreset(uid, hue, sat) {
+    const acc = State.getAccessory(uid);
+    if (!acc) return;
+    const chars = acc.serviceCharacteristics || [];
+    const hChar = chars.find(c => c.type === 'Hue');
+    const sChar = chars.find(c => c.type === 'Saturation');
+    if (!hChar) return;
+    try {
+      await API.setCharacteristic(uid, 'Hue', hue);
+      State.updateCharValue(acc.aid, hChar.iid, hue);
+      if (sChar) {
+        await API.setCharacteristic(uid, 'Saturation', sat);
+        State.updateCharValue(acc.aid, sChar.iid, sat);
+      }
+      const knob = document.getElementById(`knob-${uid}-hue`);
+      const val = document.getElementById(`val-${uid}-hue`);
+      if (knob) knob.style.left = (hue / 360) * 100 + '%';
+      if (val) val.textContent = Math.round(hue) + '°';
+    } catch (e) {
+      UI.toast('Failed to set color');
+      console.error(e);
+    }
+  },
+
+  // ── Toggle custom color panel ──────────────────────
+  toggleCustomColor(uid) {
+    const wrap = document.getElementById(`color-${uid}`);
+    if (wrap) wrap.classList.toggle('show-custom');
   },
 
   // ── Color slider HTML (hue, color temperature) ─────

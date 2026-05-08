@@ -41,9 +41,9 @@ const Devices = {
     const hasControls = controls.length > 0;
 
     return `
-      <div class="light-card neu-raised ${isOffline ? 'offline' : ''}" id="card-${accessory.uniqueId}">
+      <div class="light-card ${isOffline ? 'offline' : ''}" id="card-${accessory.uniqueId}">
         <div class="light-top" onclick="${hasControls ? `Devices.toggleExpand('${accessory.uniqueId}')` : ''}">
-          <div class="light-indicator ${isOn ? 'on' : ''}" id="ind-${accessory.uniqueId}">
+          <div class="icon-well ${isOn ? 'on' : ''}" id="ind-${accessory.uniqueId}">
             ${ic(icon, 18)}
           </div>
           <div class="light-info">
@@ -53,16 +53,13 @@ const Devices = {
             </div>
           </div>
           ${this.batteryHTML(accessory)}
-          <div data-star
-               style="cursor:pointer;font-size:16px;color:${isFav ? 'var(--accent)' : 'var(--text-muted)'};padding:4px"
-               onclick="event.stopPropagation();Devices.toggleFav('${accessory.uniqueId}')">
+          <span data-star class="icon"
+                style="cursor:pointer;font-size:16px;color:${isFav ? 'var(--accent)' : 'var(--text-muted)'};padding:4px"
+                onclick="event.stopPropagation();Devices.toggleFav('${accessory.uniqueId}')">
             ${ic(isFav ? 'starFill' : 'star', 16)}
-          </div>
+          </span>
           ${this.toggleHTML(accessory, roomId)}
-          ${hasControls ? `
-            <div class="expand-btn neu-btn" style="width:28px;height:28px;margin-left:4px">
-              ${ic('chevDown', 12)}
-            </div>` : ''}
+          ${hasControls ? `<span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;flex-shrink:0">${ic('chevDown', 14)}</span>` : ''}
         </div>
         ${hasControls ? `<div class="light-controls">${controls}</div>` : ''}
       </div>`;
@@ -70,20 +67,19 @@ const Devices = {
 
   // ── Inline battery pill ────────────────────────────
   // Surfaces the parent device's Battery service inline,
-  // color-coded by level. Returns empty string if no battery.
+  // using the design system's .status-pill semantic variants.
   batteryHTML(accessory) {
     const b = State.getBattery(accessory);
     if (!b || b.level === null) return '';
     const level = b.level;
     const isLow = b.low || level < 20;
     const isWarn = !isLow && level < 40;
-    const klass = isLow ? 'low' : (isWarn ? 'warn' : 'ok');
-    const iconName = b.charging ? 'batteryCharging' : (isLow ? 'batteryLow' : 'battery');
+    const variant = isLow ? 'alert' : (isWarn ? 'warning' : 'ok');
     const title = `Battery ${level}%${b.charging ? ' · charging' : ''}${isLow ? ' · low' : ''}`;
     return `
-      <span class="battery-pill ${klass}" title="${title}">
-        ${ic(iconName, 11)}
-        <span class="battery-pct">${level}%</span>
+      <span class="status-pill battery ${variant}" title="${title}">
+        ${ic('battery', 11)}
+        <span>${level}%</span>
       </span>`;
   },
 
@@ -161,50 +157,74 @@ const Devices = {
     return html;
   },
 
-  // ── Slider HTML (linear: brightness, speed) ────────
-  sliderHTML(uid, prop, label, value, aid, charType, iid, step = 1) {
-    const fillClass = prop === 'brightness' ? 'brightness' : 'speed';
+  // ── Slider HTML (linear: brightness, speed, temp) ──
+  // prop doubles as the slider-fill class (brightness/speed/temp all defined).
+  sliderHTML(uid, prop, label, value, aid, charType, iid, step = 1, min = 0, max = 100) {
+    const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    const display = this.sliderDisplay(prop, value);
     return `
       <div class="slider-row">
-        <div class="slider-label">${label}</div>
+        <span class="slider-label">${label}</span>
         <div class="slider-track"
              data-uid="${uid}" data-prop="${prop}" data-aid="${aid}"
              data-ctype="${charType}" data-iid="${iid}"
-             data-step="${step}" data-min="0" data-max="100" data-mode="linear"
+             data-step="${step}" data-min="${min}" data-max="${max}" data-mode="linear"
              onmousedown="Devices.startSlide(event)"
              ontouchstart="Devices.startSlide(event)">
-          <div class="slider-fill ${fillClass}"
-               id="fill-${uid}-${prop}" style="width:${Math.round(value)}%">
-            <div class="slider-knob"></div>
+          <div class="slider-fill ${prop}"
+               id="fill-${uid}-${prop}" style="width:${pct}%">
+            <span class="slider-knob"></span>
           </div>
         </div>
-        <div class="slider-value" id="val-${uid}-${prop}">${Math.round(value)}%</div>
+        <span class="slider-value" id="val-${uid}-${prop}">${display}</span>
       </div>`;
   },
 
-  // ── Color preset row (temp chips + color chips + Custom) ──
-  // Custom toggles a collapsible panel with the precise sliders.
+  // ── Hue picker track (rainbow gradient with a draggable knob) ─
+  hueTrackHTML(uid, value, aid, iid, step = 1) {
+    const pct = (value / 360) * 100;
+    return `
+      <div class="slider-row">
+        <span class="slider-label">Hue</span>
+        <div class="color-track hue"
+             data-uid="${uid}" data-prop="hue" data-aid="${aid}"
+             data-ctype="Hue" data-iid="${iid}"
+             data-step="${step}" data-min="0" data-max="360" data-mode="color"
+             onmousedown="Devices.startSlide(event)"
+             ontouchstart="Devices.startSlide(event)">
+          <span class="color-knob" id="knob-${uid}-hue" style="left:${pct}%"></span>
+        </div>
+        <span class="slider-value" id="val-${uid}-hue">${Math.round(value)}°</span>
+      </div>`;
+  },
+
+  // ── Color preset row (uses design system .color-row + .color-dot) ──
+  // Compact dots: temp presets, divider, color presets, Custom.
+  // Custom toggles a panel with a precise temp slider + hue picker.
   colorPresetsHTML(accessory, tChar, hChar) {
     const uid = accessory.uniqueId;
+    const activeTemp = this._activeTempPreset(accessory, tChar);
+    const activeColor = this._activeColorPreset(accessory, hChar);
 
-    const tempChips = tChar ? this.TEMP_PRESETS.map(p => `
-      <button class="color-preset" type="button"
-              onclick="event.stopPropagation();Devices.applyTempPreset('${uid}', ${p.kelvin})"
-              title="${p.name} ${p.kelvin}K">
-        <span class="cp-swatch" style="background:${p.swatch}"></span>
-        <span class="cp-name">${p.name}</span>
-        <span class="cp-sub">${p.kelvin}K</span>
-      </button>`).join('') : '';
+    const dotHTML = (p, isActive, onclick, kLabel) => {
+      const klass = `color-dot${isActive ? ' selected' : ''}`;
+      const inlineColor = isActive ? `;color:${p.swatch}` : '';
+      const kelvinAttr = kLabel ? ` data-kelvin="${kLabel}"` : '';
+      return `<span class="${klass}"${kelvinAttr}
+                 style="background:${p.swatch}${inlineColor}"
+                 onclick="event.stopPropagation();${onclick}"
+                 title="${p.name}${kLabel ? ' ' + kLabel + 'K' : ''}"></span>`;
+    };
 
-    const colorChips = hChar ? this.COLOR_PRESETS.map(p => `
-      <button class="color-preset" type="button"
-              onclick="event.stopPropagation();Devices.applyColorPreset('${uid}', ${p.hue}, ${p.sat})"
-              title="${p.name}">
-        <span class="cp-swatch" style="background:${p.swatch}"></span>
-        <span class="cp-name">${p.name}</span>
-      </button>`).join('') : '';
+    const tempDots = tChar ? this.TEMP_PRESETS.map(p =>
+      dotHTML(p, p.key === activeTemp, `Devices.applyTempPreset('${uid}', ${p.kelvin})`, p.kelvin)
+    ).join('') : '';
 
-    const divider = (tChar && hChar) ? '<div class="cp-divider"></div>' : '';
+    const colorDots = hChar ? this.COLOR_PRESETS.map(p =>
+      dotHTML(p, p.key === activeColor, `Devices.applyColorPreset('${uid}', ${p.hue}, ${p.sat})`)
+    ).join('') : '';
+
+    const divider = (tChar && hChar) ? '<span class="dot-divider"></span>' : '';
 
     let custom = '';
     if (tChar) {
@@ -212,31 +232,52 @@ const Devices = {
       const maxM = tChar.maxValue ?? 500;
       const step = tChar.minStep || 1;
       const val = State.getCharValue(accessory, 'ColorTemperature') ?? minM;
-      custom += this.colorSliderHTML(uid, 'temp', 'Temp', val, accessory.aid, 'ColorTemperature', tChar.iid, step, minM, maxM);
+      custom += this.sliderHTML(uid, 'temp', 'Temp', val, accessory.aid, 'ColorTemperature', tChar.iid, step, minM, maxM);
     }
     if (hChar) {
       const step = hChar.minStep || 1;
       const val = State.getCharValue(accessory, 'Hue') ?? 0;
-      custom += this.colorSliderHTML(uid, 'hue', 'Color', val, accessory.aid, 'Hue', hChar.iid, step, 0, 360);
+      custom += this.hueTrackHTML(uid, val, accessory.aid, hChar.iid, step);
     }
 
     return `
-      <div class="color-controls" id="color-${uid}">
-        <div class="color-presets">
-          ${tempChips}
-          ${divider}
-          ${colorChips}
-          <button class="color-preset cp-custom" type="button"
-                  onclick="event.stopPropagation();Devices.toggleCustomColor('${uid}')"
-                  title="Custom">
-            <span class="cp-swatch cp-swatch-custom"></span>
-            <span class="cp-name">Custom</span>
-          </button>
-        </div>
-        <div class="color-custom" id="color-custom-${uid}">
-          ${custom}
-        </div>
-      </div>`;
+      <div class="color-row ${tChar ? 'with-labels' : ''}" id="color-${uid}">
+        <span class="color-label">Color</span>
+        ${tempDots}${divider}${colorDots}
+        <span class="color-dot custom"
+              onclick="event.stopPropagation();Devices.toggleCustomColor('${uid}')"
+              title="Custom"></span>
+      </div>
+      <div class="color-custom" id="color-custom-${uid}">${custom}</div>`;
+  },
+
+  // ── Detect currently-active temp preset ────────────
+  _activeTempPreset(accessory, tChar) {
+    if (!tChar) return null;
+    const cur = State.getCharValue(accessory, 'ColorTemperature');
+    const sat = State.getCharValue(accessory, 'Saturation') ?? 0;
+    if (cur == null || sat > 10) return null;
+    const curK = 1000000 / cur;
+    let best = null, bestDist = 250;
+    for (const p of this.TEMP_PRESETS) {
+      const d = Math.abs(curK - p.kelvin);
+      if (d < bestDist) { bestDist = d; best = p.key; }
+    }
+    return best;
+  },
+
+  // ── Detect currently-active color preset ───────────
+  _activeColorPreset(accessory, hChar) {
+    if (!hChar) return null;
+    const hue = State.getCharValue(accessory, 'Hue');
+    const sat = State.getCharValue(accessory, 'Saturation') ?? 0;
+    if (hue == null || sat < 20) return null;
+    let best = null, bestDist = 22;
+    for (const p of this.COLOR_PRESETS) {
+      const d = Math.min(Math.abs(hue - p.hue), 360 - Math.abs(hue - p.hue));
+      if (d < bestDist) { bestDist = d; best = p.key; }
+    }
+    return best;
   },
 
   // ── Apply a temp preset (Kelvin → mireds) ──────────
@@ -289,27 +330,8 @@ const Devices = {
 
   // ── Toggle custom color panel ──────────────────────
   toggleCustomColor(uid) {
-    const wrap = document.getElementById(`color-${uid}`);
-    if (wrap) wrap.classList.toggle('show-custom');
-  },
-
-  // ── Color slider HTML (hue, color temperature) ─────
-  // Track shows the full color gradient; knob slides over it.
-  colorSliderHTML(uid, prop, label, value, aid, charType, iid, step, min, max) {
-    const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
-    return `
-      <div class="slider-row">
-        <div class="slider-label">${label}</div>
-        <div class="color-track ${prop}"
-             data-uid="${uid}" data-prop="${prop}" data-aid="${aid}"
-             data-ctype="${charType}" data-iid="${iid}"
-             data-step="${step}" data-min="${min}" data-max="${max}" data-mode="color"
-             onmousedown="Devices.startSlide(event)"
-             ontouchstart="Devices.startSlide(event)">
-          <div class="color-knob" id="knob-${uid}-${prop}" style="left:${pct}%"></div>
-        </div>
-        <div class="slider-value" id="val-${uid}-${prop}">${this.sliderDisplay(prop, value)}</div>
-      </div>`;
+    const panel = document.getElementById(`color-custom-${uid}`);
+    if (panel) panel.classList.toggle('show');
   },
 
   // ── Format slider value for display ────────────────

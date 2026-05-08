@@ -4,10 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Casa Control</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/layout.css">
-<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/smartmorphic.css">
+<link rel="stylesheet" href="css/casa-extras.css">
 </head>
 <body>
 
@@ -15,13 +13,13 @@
 
   <!-- Loading state -->
   <div id="loadingState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:var(--text-muted)">
-    <div style="font-size:48px">⌂</div>
+    <div class="icon-well lg" id="loadingIcon"></div>
     <div style="font-family:var(--font-display);font-size:16px">Connecting to Homebridge...</div>
   </div>
 
   <!-- Error state -->
   <div id="errorState" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:var(--danger);padding:40px;text-align:center">
-    <div style="font-size:48px">⚠</div>
+    <div class="icon-well lg" id="errorIcon" style="color:var(--danger)"></div>
     <div style="font-family:var(--font-display);font-size:16px"></div>
   </div>
 
@@ -139,10 +137,14 @@
 <script>
   // Set static button icons after scripts load
   document.addEventListener('DOMContentLoaded', () => {
-    const back = document.getElementById('backBtn');
-    if (back) back.innerHTML = ic('chevLeft', 20);
-    const rvEdit = document.getElementById('rvEditBtn');
-    if (rvEdit) rvEdit.innerHTML = ic('edit', 16);
+    const set = (id, name, size) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = ic(name, size);
+    };
+    set('backBtn', 'chevLeft', 20);
+    set('rvEditBtn', 'edit', 16);
+    set('loadingIcon', 'home', 24);
+    set('errorIcon', 'alertCircle', 24);
   });
 </script>
 

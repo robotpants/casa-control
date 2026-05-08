@@ -99,6 +99,7 @@ const App = {
     nav.innerHTML = [
       { tab: 'home', icon: 'home', label: 'Home' },
       { tab: 'devices', icon: 'lightbulb', label: 'Devices' },
+      { tab: 'debug', icon: 'wrench', label: 'Debug' },
       { tab: 'settings', icon: 'settings', label: 'Settings' },
     ].map(n => `
       <div class="nav-item ${n.tab === 'home' ? 'active' : ''}"
@@ -117,6 +118,7 @@ const App = {
 
     if (tab === 'home') this.renderHome();
     else if (tab === 'devices') this.renderDevicesView();
+    else if (tab === 'debug') this.renderDebugView();
     else if (tab === 'settings') this.renderSettingsView();
   },
 
@@ -335,6 +337,260 @@ const App = {
     UI.setActiveNav(this.currentView);
     if (this.currentView === 'devices') this.renderDevicesView();
     else Rooms.render();
+  },
+
+  // ── Debug Playground ──────────────────────────────
+  // Visual reference for every component in the design system + Casa
+  // Control extras. Pure dummies — clicking things does nothing
+  // destructive, but most interactive elements still work locally.
+  renderDebugView() {
+    const c = document.getElementById('debugContent');
+    if (!c) return;
+
+    const section = (title, body) => `
+      <div class="section-label">${title}</div>
+      <div class="dbg-section">${body}</div>`;
+
+    const swatch = (label, klass) => `
+      <div class="dbg-swatch">
+        <div class="${klass}" style="width:60px;height:60px;border-radius:14px"></div>
+        <div class="dbg-swatch-label">${label}</div>
+      </div>`;
+
+    const primitives = section('Primitives', `
+      <div class="dbg-row">
+        ${swatch('neu-raised',    'neu-raised')}
+        ${swatch('neu-raised-sm', 'neu-raised-sm')}
+        ${swatch('neu-pressed',   'neu-pressed')}
+        ${swatch('neu-pressed-sm','neu-pressed-sm')}
+      </div>`);
+
+    const wells = section('Icon Wells', `
+      <div class="dbg-row">
+        <div class="dbg-swatch"><div class="icon-well sm">${ic('lightbulb', 14)}</div><div class="dbg-swatch-label">sm</div></div>
+        <div class="dbg-swatch"><div class="icon-well">${ic('lightbulb', 18)}</div><div class="dbg-swatch-label">default</div></div>
+        <div class="dbg-swatch"><div class="icon-well on">${ic('lightbulb', 18)}</div><div class="dbg-swatch-label">on</div></div>
+        <div class="dbg-swatch"><div class="icon-well lg">${ic('lightbulb', 24)}</div><div class="dbg-swatch-label">lg</div></div>
+      </div>`);
+
+    const buttons = section('Buttons', `
+      <div class="dbg-row">
+        <div class="neu-btn">${ic('home', 18)}</div>
+        <div class="neu-btn active">${ic('home', 18)}</div>
+        <button class="neu-btn-rect">${ic('edit', 14)}<span>Default</span></button>
+        <button class="neu-btn-rect active">${ic('check', 14)}<span>Active</span></button>
+        <button class="btn-primary">Primary CTA</button>
+      </div>
+      <div class="dbg-row" style="margin-top:8px">
+        <button class="modal-btn primary" style="max-width:140px">Modal Primary</button>
+        <button class="modal-btn secondary" style="max-width:140px">Secondary</button>
+        <button class="modal-btn danger" style="max-width:140px">Danger</button>
+      </div>`);
+
+    const toggles = section('Toggles', `
+      <div class="dbg-row">
+        <div class="dbg-swatch">
+          <div class="toggle"><div class="knob"></div></div>
+          <div class="dbg-swatch-label">off</div>
+        </div>
+        <div class="dbg-swatch">
+          <div class="toggle on"><div class="knob"></div></div>
+          <div class="dbg-swatch-label">on</div>
+        </div>
+      </div>`);
+
+    const sliderRow = (cls, pct, label, val) => `
+      <div class="slider-row">
+        <span class="slider-label">${label}</span>
+        <div class="slider-track">
+          <div class="slider-fill ${cls}" style="width:${pct}%"><span class="slider-knob"></span></div>
+        </div>
+        <span class="slider-value">${val}</span>
+      </div>`;
+
+    const sliders = section('Sliders', `
+      ${sliderRow('brightness', 78, 'Bri', '78%')}
+      ${sliderRow('speed', 50, 'Speed', '50%')}
+      ${sliderRow('temp', 35, 'Temp', '2700K')}`);
+
+    const colorRow = section('Color Picker', `
+      <div class="color-row with-labels">
+        <span class="color-label">Color</span>
+        <span class="color-dot selected" style="background:#f6cf99;color:#f6cf99" data-kelvin="2700"></span>
+        <span class="color-dot" style="background:#f8e4c4" data-kelvin="3000"></span>
+        <span class="color-dot" style="background:#f4ecdb" data-kelvin="5000"></span>
+        <span class="dot-divider"></span>
+        <span class="color-dot" style="background:#d75a3e"></span>
+        <span class="color-dot" style="background:#dba63b"></span>
+        <span class="color-dot" style="background:#65b67c"></span>
+        <span class="color-dot" style="background:#5b8ed8"></span>
+        <span class="color-dot" style="background:#9170c4"></span>
+        <span class="color-dot custom"></span>
+      </div>`);
+
+    const pills = section('Status Pills', `
+      <div class="dbg-row">
+        <span class="status-pill ok">OK</span>
+        <span class="status-pill warning">Warning</span>
+        <span class="status-pill alert">Alert</span>
+        <span class="status-pill info">Info</span>
+        <span class="status-pill battery ok">${ic('battery', 11)}<span>87%</span></span>
+        <span class="status-pill battery warning">${ic('battery', 11)}<span>32%</span></span>
+        <span class="status-pill battery alert">${ic('battery', 11)}<span>4%</span></span>
+      </div>`);
+
+    const banner = section('Low-Battery Banner', `
+      <div class="low-battery-banner">
+        <div class="lbb-icon">${ic('batteryLow', 18)}</div>
+        <div class="lbb-text">
+          <div class="lbb-title">2 devices need batteries</div>
+          <div class="lbb-sub">Hue Dimmer Living Room 4% · Master Lamp Remote 12%</div>
+        </div>
+        <div class="lbb-pct critical">4%</div>
+      </div>`);
+
+    const statusTiles = section('Status Tiles (4-up)', `
+      <div class="status-row">
+        <div class="status-card neu-raised">
+          <div class="status-icon">${ic('thermometer', 24)}</div>
+          <div class="status-value">72°</div>
+          <div class="status-label">Inside</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon">${ic('cloudSun', 24)}</div>
+          <div class="status-value">57°</div>
+          <div class="status-label">Outside</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon">${ic('shield', 24)}</div>
+          <div class="status-value" style="color:var(--success)">OK</div>
+          <div class="status-label">Security</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon">${ic('lightbulb', 24)}</div>
+          <div class="status-value">3</div>
+          <div class="status-label">Lights On</div>
+        </div>
+      </div>`);
+
+    const roomCardChips = ['light','fan','sensor'].map(t => `
+      <span class="room-type-chip ${t === 'light' ? 'active' : ''}">
+        ${ic(t === 'light' ? 'lightbulb' : t === 'fan' ? 'wind' : 'thermometer', 11)}
+        <span>${t === 'light' ? '2/4' : '1'}</span>
+      </span>`).join('');
+
+    const roomCardSample = section('Room Card', `
+      <div class="room-grid">
+        <div class="room-card neu-raised">
+          <span class="room-icon-wrap">${ic('sofa', 28)}</span>
+          <h3>Living Room</h3>
+          <div class="room-types">
+            <span class="room-type-chip temp">${ic('thermometer', 11)}<span>72°</span></span>
+            ${roomCardChips}
+          </div>
+          <div class="room-active-dot"></div>
+        </div>
+        <div class="room-card neu-raised inactive">
+          <span class="room-icon-wrap">${ic('bed', 28)}</span>
+          <h3>Master Bedroom</h3>
+          <div class="room-types">
+            <span class="room-type-chip">${ic('lightbulb', 11)}<span>0/3</span></span>
+          </div>
+          <div class="room-active-dot"></div>
+        </div>
+      </div>`);
+
+    const lightCardSample = section('Light Card (collapsed + expanded)', `
+      <div class="light-list">
+        <div class="light-card">
+          <div class="light-top">
+            <div class="icon-well on">${ic('lightbulb', 18)}</div>
+            <div class="light-info">
+              <div class="light-name">Pendant Light</div>
+              <div class="light-status">On · 80%</div>
+            </div>
+            <span class="status-pill battery ok">${ic('battery', 11)}<span>92%</span></span>
+            <span class="icon" style="color:var(--accent);padding:4px">${ic('starFill', 16)}</span>
+            <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px">${ic('chevDown', 14)}</span>
+            <div class="toggle on"><div class="knob"></div></div>
+          </div>
+        </div>
+
+        <div class="light-card expanded">
+          <div class="light-top">
+            <div class="icon-well on">${ic('lightbulb', 18)}</div>
+            <div class="light-info">
+              <div class="light-name">Reading Lamp</div>
+              <div class="light-status">On · 50%</div>
+            </div>
+            <span class="icon" style="color:var(--text-muted);padding:4px">${ic('star', 16)}</span>
+            <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px">${ic('chevDown', 14)}</span>
+            <div class="toggle on"><div class="knob"></div></div>
+          </div>
+          <div class="light-controls">
+            ${sliderRow('brightness', 50, 'Bri', '50%')}
+            <div class="color-row with-labels">
+              <span class="color-label">Color</span>
+              <span class="color-dot" style="background:#f6cf99" data-kelvin="2700"></span>
+              <span class="color-dot selected" style="background:#f8e4c4;color:#f8e4c4" data-kelvin="3000"></span>
+              <span class="color-dot" style="background:#f4ecdb" data-kelvin="5000"></span>
+              <span class="dot-divider"></span>
+              <span class="color-dot" style="background:#d75a3e"></span>
+              <span class="color-dot" style="background:#65b67c"></span>
+              <span class="color-dot custom"></span>
+            </div>
+            <div class="device-edit-row">
+              <button class="neu-btn-rect">${ic('edit', 14)}<span>Edit Device</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="light-card offline">
+          <div class="light-top">
+            <div class="icon-well">${ic('plug', 18)}</div>
+            <div class="light-info">
+              <div class="light-name">Garage Outlet</div>
+              <div class="light-status"><span style="color:var(--danger)">Offline</span></div>
+            </div>
+            <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px">${ic('chevDown', 14)}</span>
+            <div class="toggle"><div class="knob"></div></div>
+          </div>
+        </div>
+      </div>`);
+
+    const masterRow = section('Master Row', `
+      <div class="master-row neu-raised">
+        <div class="master-info">
+          <h3>Lights</h3>
+          <span>2 of 3 on</span>
+        </div>
+        <div class="toggle on"><div class="knob"></div></div>
+      </div>`);
+
+    const typography = section('Typography', `
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1>H1 — Outfit, 24px, 600</h1>
+        <h2>H2 — Outfit, 20px, 600</h2>
+        <h3>H3 — DM Sans, 15px, 600</h3>
+        <div style="font-size:14px">Body — DM Sans, 14px, 400</div>
+        <div style="font-size:13px;color:var(--text-secondary)">Sub — 13px, secondary text color</div>
+        <div class="eyebrow">Eyebrow — Outfit, 11px, uppercase, 1.5px tracking</div>
+        <div class="stat-num">22</div>
+        <div class="mono">JetBrains Mono · 0123456789 · uniqueId snippet</div>
+      </div>`);
+
+    const allIcons = Object.keys(I).sort().map(name => `
+      <div class="dbg-icon-cell" title="${name}">
+        <div class="icon-well">${ic(name, 18)}</div>
+        <div class="dbg-icon-name">${name}</div>
+      </div>`).join('');
+
+    const icons = section(`Icons (${Object.keys(I).length})`, `
+      <div class="dbg-icon-grid">${allIcons}</div>`);
+
+    c.innerHTML = primitives + wells + buttons + toggles + sliders + colorRow
+      + pills + banner + statusTiles + roomCardSample + lightCardSample
+      + masterRow + typography + icons;
   },
 
   // ── Weather ────────────────────────────────────────

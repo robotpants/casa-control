@@ -374,16 +374,16 @@ const Devices = {
     return Math.round(value) + '%';
   },
 
-  // Pending toggles (request deduplication)
-  _toggling: new Set(),
   // Recently-toggled devices: uid → expiresAt timestamp.
   // Refresh skips these so the optimistic value isn't overwritten by
   // the API still reporting the pre-toggle state for a few seconds.
   _recentToggles: {},
 
   // ── Toggle on/off ──────────────────────────────────
-  async toggle(uniqueId) {
-    if (this._toggling.has(uniqueId)) return;  // dedupe rapid taps
+  // Fire-and-forget: optimistic UI updates immediately; the HTTP
+  // request runs in the background. Tile stays responsive even when
+  // Homebridge / a slow plugin takes seconds to acknowledge.
+  toggle(uniqueId) {
     const accessory = State.getAccessory(uniqueId);
     if (!accessory) return;
 
@@ -391,39 +391,34 @@ const Devices = {
     const targetState = !wasOn;
     const type = State.getType(accessory);
 
-    this._toggling.add(uniqueId);
+    // Optimistic UI + grace window starts at click time
     this.updateIndicator(uniqueId, targetState);
+    this._recentToggles[uniqueId] = Date.now() + 10000;
 
-    try {
-      await API.setOnOff(accessory, targetState);
-      const char = accessory.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
-      if (char) State.updateCharValue(accessory.aid, char.iid, targetState ? 1 : 0);
+    API.setOnOff(accessory, targetState)
+      .then(() => {
+        const char = accessory.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
+        if (char) State.updateCharValue(accessory.aid, char.iid, targetState ? 1 : 0);
 
-      // Fans/purifiers: some plugins (Dreo, others) need RotationSpeed=0
-      // to actually stop. Active=0 alone leaves them spinning.
-      if (!targetState && (type === 'fan' || type === 'purifier')) {
-        const speedChar = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
-        if (speedChar && (speedChar.value ?? 0) > 0) {
-          try {
-            await API.setCharacteristic(uniqueId, 'RotationSpeed', 0);
-            State.updateCharValue(accessory.aid, speedChar.iid, 0);
-          } catch (_) { /* ignore secondary failure */ }
+        // Fans/purifiers: some plugins (Dreo) don't actually stop on
+        // Active=0 alone — also send RotationSpeed=0.
+        if (!targetState && (type === 'fan' || type === 'purifier')) {
+          const speedChar = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
+          if (speedChar && (speedChar.value ?? 0) > 0) {
+            API.setCharacteristic(uniqueId, 'RotationSpeed', 0)
+              .then(() => State.updateCharValue(accessory.aid, speedChar.iid, 0))
+              .catch(() => { /* secondary; ignore */ });
+          }
         }
-      }
 
-      // Trust our own write for a few seconds — many plugins lag updating
-      // the cache, so an immediate refresh would flip the toggle back.
-      this._recentToggles[uniqueId] = Date.now() + 5000;
-
-      this.updateStatus(uniqueId);
-      Rooms.render();
-    } catch (e) {
-      this.updateIndicator(uniqueId, wasOn);
-      UI.toast(e.name === 'AbortError' ? 'Device timed out' : 'Failed to update device');
-      console.error(e);
-    } finally {
-      this._toggling.delete(uniqueId);
-    }
+        this.updateStatus(uniqueId);
+        Rooms.render();
+      })
+      .catch(e => {
+        this.updateIndicator(uniqueId, wasOn);
+        UI.toast(e.name === 'AbortError' ? 'Device timed out' : 'Failed to update device');
+        console.error(e);
+      });
   },
 
   // ── Slider interaction ─────────────────────────────

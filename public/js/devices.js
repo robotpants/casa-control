@@ -210,18 +210,18 @@ const Devices = {
       const klass = `color-dot${isActive ? ' selected' : ''}`;
       const inlineColor = isActive ? `;color:${p.swatch}` : '';
       const kelvinAttr = kLabel ? ` data-kelvin="${kLabel}"` : '';
-      return `<span class="${klass}"${kelvinAttr}
+      return `<span class="${klass}" data-preset="${p.key}"${kelvinAttr}
                  style="background:${p.swatch}${inlineColor}"
                  onclick="event.stopPropagation();${onclick}"
                  title="${p.name}${kLabel ? ' ' + kLabel + 'K' : ''}"></span>`;
     };
 
     const tempDots = tChar ? this.TEMP_PRESETS.map(p =>
-      dotHTML(p, p.key === activeTemp, `Devices.applyTempPreset('${uid}', ${p.kelvin})`, p.kelvin)
+      dotHTML(p, p.key === activeTemp, `Devices.applyTempPreset('${uid}', '${p.key}')`, p.kelvin)
     ).join('') : '';
 
     const colorDots = hChar ? this.COLOR_PRESETS.map(p =>
-      dotHTML(p, p.key === activeColor, `Devices.applyColorPreset('${uid}', ${p.hue}, ${p.sat})`)
+      dotHTML(p, p.key === activeColor, `Devices.applyColorPreset('${uid}', '${p.key}')`)
     ).join('') : '';
 
     const divider = (tChar && hChar) ? '<span class="dot-divider"></span>' : '';
@@ -281,22 +281,31 @@ const Devices = {
   },
 
   // ── Apply a temp preset (Kelvin → mireds) ──────────
-  async applyTempPreset(uid, kelvin) {
+  async applyTempPreset(uid, key) {
+    const p = this.TEMP_PRESETS.find(x => x.key === key);
     const acc = State.getAccessory(uid);
-    if (!acc) return;
+    if (!p || !acc) return;
     const tChar = (acc.serviceCharacteristics || []).find(c => c.type === 'ColorTemperature');
+    const sChar = (acc.serviceCharacteristics || []).find(c => c.type === 'Saturation');
     if (!tChar) return;
     const minM = tChar.minValue ?? 140;
     const maxM = tChar.maxValue ?? 500;
-    let mireds = Math.round(1000000 / kelvin);
-    mireds = Math.max(minM, Math.min(maxM, mireds));
+    const mireds = Math.max(minM, Math.min(maxM, Math.round(1000000 / p.kelvin)));
     try {
       await API.setCharacteristic(uid, 'ColorTemperature', mireds);
       State.updateCharValue(acc.aid, tChar.iid, mireds);
+      // Picking a temp implies white mode — drop saturation so the bulb shows white-ish
+      if (sChar && sChar.value > 0) {
+        try {
+          await API.setCharacteristic(uid, 'Saturation', 0);
+          State.updateCharValue(acc.aid, sChar.iid, 0);
+        } catch (_) { /* ignore */ }
+      }
+      this._highlightPreset(uid, p);
       const knob = document.getElementById(`knob-${uid}-temp`);
       const val = document.getElementById(`val-${uid}-temp`);
       if (knob) knob.style.left = ((mireds - minM) / (maxM - minM)) * 100 + '%';
-      if (val) val.textContent = kelvin + 'K';
+      if (val) val.textContent = p.kelvin + 'K';
     } catch (e) {
       UI.toast('Failed to set color');
       console.error(e);
@@ -304,28 +313,42 @@ const Devices = {
   },
 
   // ── Apply a color preset (Hue + Saturation) ────────
-  async applyColorPreset(uid, hue, sat) {
+  async applyColorPreset(uid, key) {
+    const p = this.COLOR_PRESETS.find(x => x.key === key);
     const acc = State.getAccessory(uid);
-    if (!acc) return;
+    if (!p || !acc) return;
     const chars = acc.serviceCharacteristics || [];
     const hChar = chars.find(c => c.type === 'Hue');
     const sChar = chars.find(c => c.type === 'Saturation');
     if (!hChar) return;
     try {
-      await API.setCharacteristic(uid, 'Hue', hue);
-      State.updateCharValue(acc.aid, hChar.iid, hue);
+      await API.setCharacteristic(uid, 'Hue', p.hue);
+      State.updateCharValue(acc.aid, hChar.iid, p.hue);
       if (sChar) {
-        await API.setCharacteristic(uid, 'Saturation', sat);
-        State.updateCharValue(acc.aid, sChar.iid, sat);
+        await API.setCharacteristic(uid, 'Saturation', p.sat);
+        State.updateCharValue(acc.aid, sChar.iid, p.sat);
       }
+      this._highlightPreset(uid, p);
       const knob = document.getElementById(`knob-${uid}-hue`);
       const val = document.getElementById(`val-${uid}-hue`);
-      if (knob) knob.style.left = (hue / 360) * 100 + '%';
-      if (val) val.textContent = Math.round(hue) + '°';
+      if (knob) knob.style.left = (p.hue / 360) * 100 + '%';
+      if (val) val.textContent = Math.round(p.hue) + '°';
     } catch (e) {
       UI.toast('Failed to set color');
       console.error(e);
     }
+  },
+
+  // ── Update the .selected dot in the color-row ──────
+  _highlightPreset(uid, preset) {
+    const row = document.getElementById(`color-${uid}`);
+    if (!row) return;
+    row.querySelectorAll('.color-dot[data-preset]').forEach(dot => {
+      const isMatch = dot.dataset.preset === preset.key;
+      dot.classList.toggle('selected', isMatch);
+      if (isMatch) dot.style.color = preset.swatch;
+      else dot.style.removeProperty('color');
+    });
   },
 
   // ── Toggle custom color panel ──────────────────────

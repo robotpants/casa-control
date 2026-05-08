@@ -436,6 +436,8 @@ const Devices = {
     const max = parseFloat(track.dataset.max) || 100;
     const mode = track.dataset.mode || 'linear';
 
+    const isDemo = uid && uid.startsWith('demo');
+
     const update = (ev) => {
       const rect = track.getBoundingClientRect();
       const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
@@ -471,6 +473,8 @@ const Devices = {
       document.removeEventListener('mouseup', finish);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', finish);
+
+      if (isDemo) return;  // debug-playground sliders: visual only
 
       try {
         await API.setCharacteristic(uid, charType, lastVal);

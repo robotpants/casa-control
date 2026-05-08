@@ -184,8 +184,9 @@ const App = {
     const worst = State.getBattery(sorted[0])?.level ?? 0;
 
     section.style.display = 'block';
+    const worstUid = sorted[0].uniqueId;
     section.innerHTML = `
-      <div class="low-battery-banner neu-raised">
+      <div class="low-battery-banner neu-raised" onclick="Devices.openManageModal('${worstUid}')" style="cursor:pointer">
         <div class="lbb-icon">${ic('batteryLow', 18)}</div>
         <div class="lbb-text">
           <div class="lbb-title">${lows.length === 1 ? '1 device needs a battery' : `${lows.length} devices need batteries`}</div>
@@ -278,6 +279,12 @@ const App = {
   renderSettingsView() {
     const content = document.getElementById('settingsContent');
     if (!content) return;
+    const accentDots = State.ACCENT_PRESETS.map(p => `
+      <span class="color-dot ${State.prefs.accent === p.hex || (!State.prefs.accent && p.key === 'ember') ? 'selected' : ''}"
+            title="${p.name}"
+            style="background:${p.hex}${State.prefs.accent === p.hex || (!State.prefs.accent && p.key === 'ember') ? `;color:${p.hex}` : ''}"
+            onclick="App.setAccent('${p.hex}')"></span>`).join('');
+
     content.innerHTML = `
       <div class="section-label">Appearance</div>
       <div class="settings-group">
@@ -292,6 +299,33 @@ const App = {
           <div class="toggle ${State.isDark ? 'on' : ''}" id="settingsThemeToggle"
                onclick="UI.toggleTheme();App.renderSettingsView()">
             <div class="knob"></div>
+          </div>
+        </div>
+        <div class="settings-item neu-raised" style="display:block">
+          <div class="left" style="margin-bottom:10px">
+            <div class="s-icon">${ic('palette', 18)}</div>
+            <div>
+              <div class="s-label">Accent Color</div>
+              <div class="s-sub">Used for active state, focus, brand</div>
+            </div>
+          </div>
+          <div class="color-row" style="padding-left:48px">${accentDots}</div>
+        </div>
+      </div>
+
+      <div class="section-label">Location</div>
+      <div class="settings-group">
+        <div class="settings-item neu-raised" style="display:block">
+          <div class="left" style="margin-bottom:10px">
+            <div class="s-icon">${ic('cloudSun', 18)}</div>
+            <div>
+              <div class="s-label">Weather Location</div>
+              <div class="s-sub">${State.prefs.weatherCity || 'Default — Los Angeles, CA'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding-left:48px">
+            <input class="modal-input" id="zipInput" placeholder="ZIP code" value="${State.prefs.weatherZip || ''}" maxlength="10" style="flex:1">
+            <button class="modal-btn primary" style="flex:0 0 auto;padding:10px 20px" onclick="App.setZip()">Set</button>
           </div>
         </div>
       </div>
@@ -323,7 +357,7 @@ const App = {
             <div class="s-icon">${ic('home', 18)}</div>
             <div>
               <div class="s-label">Casa Control</div>
-              <div class="s-sub">v1.0.0 · ${State.accessories.length} accessories</div>
+              <div class="s-sub">v0.0.1 · ${State.accessories.length} accessories</div>
             </div>
           </div>
         </div>
@@ -390,16 +424,46 @@ const App = {
     const toggles = section('Toggles', `
       <div class="dbg-row">
         <div class="dbg-swatch">
-          <div class="toggle"><div class="knob"></div></div>
-          <div class="dbg-swatch-label">off</div>
+          <div class="toggle" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+          <div class="dbg-swatch-label">off → tap</div>
         </div>
         <div class="dbg-swatch">
-          <div class="toggle on"><div class="knob"></div></div>
-          <div class="dbg-swatch-label">on</div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
+          <div class="dbg-swatch-label">on → tap</div>
         </div>
       </div>`);
 
-    const sliderRow = (cls, pct, label, val) => `
+    // Functional sliders for debug — uid='demoX' makes startSlide skip the API call
+    const demoSlider = (uid, prop, label, value) => {
+      const min = prop === 'temp' ? 140 : 0;
+      const max = prop === 'temp' ? 500 : 100;
+      const display = prop === 'temp' ? Math.round(1000000 / value) + 'K' : Math.round(value) + '%';
+      const pct = max > min ? ((value - min) / (max - min)) * 100 : value;
+      return `
+        <div class="slider-row">
+          <span class="slider-label">${label}</span>
+          <div class="slider-track"
+               data-uid="${uid}" data-prop="${prop}" data-aid="0"
+               data-ctype="demo" data-iid="0"
+               data-step="1" data-min="${min}" data-max="${max}" data-mode="linear"
+               onmousedown="Devices.startSlide(event)"
+               ontouchstart="Devices.startSlide(event)">
+            <div class="slider-fill ${prop}"
+                 id="fill-${uid}-${prop}" style="width:${pct}%">
+              <span class="slider-knob"></span>
+            </div>
+          </div>
+          <span class="slider-value" id="val-${uid}-${prop}">${display}</span>
+        </div>`;
+    };
+
+    const sliders = section('Sliders (drag — demo only, no API)', `
+      ${demoSlider('demo1', 'brightness', 'Bri', 78)}
+      ${demoSlider('demo2', 'speed', 'Speed', 50)}
+      ${demoSlider('demo3', 'temp', 'Temp', 370)}`);
+
+    // Static slider markup used inside the light-card preview below
+    const staticSlider = (cls, pct, label, val) => `
       <div class="slider-row">
         <span class="slider-label">${label}</span>
         <div class="slider-track">
@@ -407,11 +471,6 @@ const App = {
         </div>
         <span class="slider-value">${val}</span>
       </div>`;
-
-    const sliders = section('Sliders', `
-      ${sliderRow('brightness', 78, 'Bri', '78%')}
-      ${sliderRow('speed', 50, 'Speed', '50%')}
-      ${sliderRow('temp', 35, 'Temp', '2700K')}`);
 
     const colorRow = section('Color Picker', `
       <div class="color-row with-labels">
@@ -512,7 +571,7 @@ const App = {
             <span class="status-pill battery ok">${ic('battery', 11)}<span>92%</span></span>
             <span class="icon" style="color:var(--accent);padding:4px">${ic('starFill', 16)}</span>
             <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px">${ic('chevDown', 14)}</span>
-            <div class="toggle on"><div class="knob"></div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
           </div>
         </div>
 
@@ -525,10 +584,10 @@ const App = {
             </div>
             <span class="icon" style="color:var(--text-muted);padding:4px">${ic('star', 16)}</span>
             <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px">${ic('chevDown', 14)}</span>
-            <div class="toggle on"><div class="knob"></div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
           </div>
           <div class="light-controls">
-            ${sliderRow('brightness', 50, 'Bri', '50%')}
+            ${staticSlider('brightness', 50, 'Bri', '50%')}
             <div class="color-row with-labels">
               <span class="color-label">Color</span>
               <span class="color-dot" style="background:#f6cf99" data-kelvin="2700"></span>
@@ -564,7 +623,7 @@ const App = {
           <h3>Lights</h3>
           <span>2 of 3 on</span>
         </div>
-        <div class="toggle on"><div class="knob"></div></div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div>
       </div>`);
 
     const typography = section('Typography', `
@@ -600,7 +659,7 @@ const App = {
 
   async fetchWeather() {
     try {
-      const data = await API.getWeather();
+      const data = await API.getWeather(State.prefs.weatherLat, State.prefs.weatherLon);
       this._weatherCache = data;
       const temp = Math.round(data.current.temperature_2m);
       const code = data.current.weather_code;
@@ -622,13 +681,15 @@ const App = {
     this.currentView = 'weather';
     this.showView('weather');
     UI.setActiveNav('home'); // stays under Home
+    const loc = document.getElementById('weatherLocation');
+    if (loc) loc.textContent = State.prefs.weatherCity || '—';
 
     if (this._weatherCache) this.renderWeather(this._weatherCache);
     else document.getElementById('weatherContent').innerHTML =
       '<div style="padding:40px 0;text-align:center;color:var(--text-muted)">Loading…</div>';
 
     try {
-      const data = await API.getWeather();
+      const data = await API.getWeather(State.prefs.weatherLat, State.prefs.weatherLon);
       this._weatherCache = data;
       this.renderWeather(data);
     } catch (e) {
@@ -758,6 +819,51 @@ const App = {
     if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  },
+
+  // ── Accent color preference ────────────────────────
+  setAccent(hex) {
+    State.prefs.accent = hex;
+    State.savePrefs();
+    State.applyAccent();
+    this.renderSettingsView();
+  },
+
+  // ── Zip → geocode → weather location ───────────────
+  async setZip() {
+    const inp = document.getElementById('zipInput');
+    const zip = (inp?.value || '').trim();
+    if (!zip) {
+      State.prefs.weatherZip = null;
+      State.prefs.weatherLat = 34.1164;
+      State.prefs.weatherLon = -118.3390;
+      State.prefs.weatherCity = 'Los Angeles, CA';
+      State.savePrefs();
+      this._weatherCache = null;
+      this.fetchWeather();
+      this.renderSettingsView();
+      UI.toast('Reset to default');
+      return;
+    }
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(zip)}&count=1&country=US`);
+      if (!res.ok) throw new Error('Geocoding failed');
+      const data = await res.json();
+      const r = data.results?.[0];
+      if (!r) { UI.toast('ZIP not found'); return; }
+      State.prefs.weatherZip = zip;
+      State.prefs.weatherLat = r.latitude;
+      State.prefs.weatherLon = r.longitude;
+      State.prefs.weatherCity = `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}`;
+      State.savePrefs();
+      this._weatherCache = null;
+      this.fetchWeather();
+      this.renderSettingsView();
+      UI.toast(`Set to ${State.prefs.weatherCity}`);
+    } catch (e) {
+      UI.toast('Geocoding failed');
+      console.error(e);
+    }
   },
 
   // ── Reset rooms ────────────────────────────────────

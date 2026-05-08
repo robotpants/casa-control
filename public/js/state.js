@@ -24,6 +24,26 @@ const State = {
   // Lets users force a switch/outlet to render as a light, etc.
   deviceTypes: {},
 
+  // ── User preferences (persisted) ──────────────────
+  prefs: {
+    accent: null,                          // hex string or null = default ember
+    weatherZip: null,
+    weatherLat: 34.1164,
+    weatherLon: -118.3390,
+    weatherCity: 'Los Angeles, CA',
+  },
+
+  // Available accent presets
+  ACCENT_PRESETS: [
+    { key: 'ember',  name: 'Ember',  hex: '#e8653a', glow: 'rgba(232,101,58,0.35)' },
+    { key: 'amber',  name: 'Amber',  hex: '#e8b83a', glow: 'rgba(232,184,58,0.35)' },
+    { key: 'green',  name: 'Green',  hex: '#3abf7a', glow: 'rgba(58,191,122,0.35)' },
+    { key: 'blue',   name: 'Blue',   hex: '#3a8ee8', glow: 'rgba(58,142,232,0.35)' },
+    { key: 'purple', name: 'Purple', hex: '#9b59b6', glow: 'rgba(155,89,182,0.35)' },
+    { key: 'pink',   name: 'Pink',   hex: '#e84a7a', glow: 'rgba(232,74,122,0.35)' },
+    { key: 'teal',   name: 'Teal',   hex: '#3abfb8', glow: 'rgba(58,191,184,0.35)' },
+  ],
+
   // Human-readable labels for picker UI
   TYPE_LABELS: {
     light:    'Light',
@@ -144,6 +164,30 @@ const State = {
       const saved = localStorage.getItem('cc-types');
       if (saved) { this.deviceTypes = JSON.parse(saved); }
     } catch(e) {}
+  },
+
+  // ── Persist user prefs (accent color, weather location) ─
+  savePrefs() {
+    try { localStorage.setItem('cc-prefs', JSON.stringify(this.prefs)); } catch(e) {}
+  },
+
+  loadPrefs() {
+    try {
+      const saved = localStorage.getItem('cc-prefs');
+      if (saved) { this.prefs = { ...this.prefs, ...JSON.parse(saved) }; }
+    } catch(e) {}
+  },
+
+  // Apply the chosen accent color to CSS custom properties
+  applyAccent() {
+    const preset = this.ACCENT_PRESETS.find(p => p.hex === this.prefs.accent);
+    if (preset) {
+      document.documentElement.style.setProperty('--accent', preset.hex);
+      document.documentElement.style.setProperty('--accent-glow', preset.glow);
+    } else {
+      document.documentElement.style.removeProperty('--accent');
+      document.documentElement.style.removeProperty('--accent-glow');
+    }
   },
 
   // Auto-detected type (no override applied) — used by the picker UI
@@ -455,6 +499,8 @@ const State = {
     this.loadFavorites();
     this.loadDeviceNames();
     this.loadDeviceTypes();
+    this.loadPrefs();
+    this.applyAccent();
     const hasSavedRooms = this.loadRooms();
 
     const raw = await API.getAccessories();

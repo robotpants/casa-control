@@ -78,6 +78,23 @@ const API = {
     return this.setCharacteristic(accessory.uniqueId, char.type, value);
   },
 
+  // ── Casa Control prefs bundle (cross-device sync) ─
+  async getPrefs() {
+    const res = await this._fetch('/api/prefs', {}, 5000);
+    if (!res.ok) throw new Error('Prefs fetch failed');
+    return res.json();
+  },
+
+  async putPrefs(payload) {
+    const res = await this._fetch('/api/prefs', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, 5000);
+    if (!res.ok) throw new Error('Prefs save failed');
+    return res.json();
+  },
+
   // ── Pi health stats (served by our own Express server) ─
   async getPiStats() {
     const res = await fetch('/api/pi-stats');

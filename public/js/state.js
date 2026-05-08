@@ -158,9 +158,40 @@ const State = {
     { id: 'garage',   name: 'Garage',         icon: 'garage',  devices: ['Garage Wall Lights'] },
   ],
 
+  // ── Cross-device sync ─────────────────────────────
+  // Server is canonical; localStorage is a write-through cache for
+  // offline use. Each save* writes localStorage immediately and queues
+  // a debounced PUT of the whole bundle. _syncEnabled is flipped on
+  // after init() so initial loads don't echo back to the server.
+  _syncEnabled: false,
+  _syncTimer: null,
+
+  _queueSync() {
+    if (!this._syncEnabled) return;
+    clearTimeout(this._syncTimer);
+    this._syncTimer = setTimeout(() => this._pushSync(), 500);
+  },
+
+  async _pushSync() {
+    try {
+      await API.putPrefs({
+        version: 1,
+        prefs: this.prefs,
+        deviceNames: this.deviceNames,
+        deviceTypes: this.deviceTypes,
+        rooms: this.rooms,
+        favorites: this.favorites,
+      });
+    } catch (e) {
+      // localStorage already has the change; we'll retry on next save.
+      console.warn('Prefs sync push failed (will retry):', e.message);
+    }
+  },
+
   // ── Persist rooms to localStorage ─────────────────
   saveRooms() {
     try { localStorage.setItem('cc-rooms', JSON.stringify(this.rooms)); } catch(e) {}
+    this._queueSync();
   },
 
   loadRooms() {
@@ -174,6 +205,7 @@ const State = {
   // ── Persist favorites to localStorage ─────────────
   saveFavorites() {
     try { localStorage.setItem('cc-favs', JSON.stringify(this.favorites)); } catch(e) {}
+    this._queueSync();
   },
 
   loadFavorites() {
@@ -186,6 +218,7 @@ const State = {
   // ── Persist device name overrides to localStorage ─
   saveDeviceNames() {
     try { localStorage.setItem('cc-names', JSON.stringify(this.deviceNames)); } catch(e) {}
+    this._queueSync();
   },
 
   loadDeviceNames() {
@@ -198,6 +231,7 @@ const State = {
   // ── Persist device type overrides to localStorage ─
   saveDeviceTypes() {
     try { localStorage.setItem('cc-types', JSON.stringify(this.deviceTypes)); } catch(e) {}
+    this._queueSync();
   },
 
   loadDeviceTypes() {
@@ -210,6 +244,7 @@ const State = {
   // ── Persist user prefs (accent color, weather location) ─
   savePrefs() {
     try { localStorage.setItem('cc-prefs', JSON.stringify(this.prefs)); } catch(e) {}
+    this._queueSync();
   },
 
   loadPrefs() {
@@ -547,22 +582,57 @@ const State = {
 
   // ── Initialize ────────────────────────────────────
   async init() {
+    // Load localStorage first as a fallback / cache. If the server
+    // is reachable, its values overwrite these; if not, we keep
+    // running on the cache.
     this.loadFavorites();
     this.loadDeviceNames();
     this.loadDeviceTypes();
     this.loadPrefs();
+    this.loadRooms();
+
+    // Pull canonical state from the Pi. Server wins when it's reachable.
+    let serverHadData = false;
+    try {
+      const remote = await API.getPrefs();
+      if (remote && typeof remote === 'object' && Object.keys(remote).length > 0) {
+        serverHadData = true;
+        if (remote.prefs)        this.prefs       = { ...this.prefs, ...remote.prefs };
+        if (remote.deviceNames)  this.deviceNames = remote.deviceNames;
+        if (remote.deviceTypes)  this.deviceTypes = remote.deviceTypes;
+        if (Array.isArray(remote.rooms))     this.rooms     = remote.rooms;
+        if (Array.isArray(remote.favorites)) this.favorites = remote.favorites;
+        // Write through to localStorage cache so offline reloads use
+        // the freshly-synced state.
+        try { localStorage.setItem('cc-prefs', JSON.stringify(this.prefs)); } catch(e) {}
+        try { localStorage.setItem('cc-names', JSON.stringify(this.deviceNames)); } catch(e) {}
+        try { localStorage.setItem('cc-types', JSON.stringify(this.deviceTypes)); } catch(e) {}
+        try { localStorage.setItem('cc-rooms', JSON.stringify(this.rooms)); } catch(e) {}
+        try { localStorage.setItem('cc-favs',  JSON.stringify(this.favorites)); } catch(e) {}
+      }
+    } catch (e) {
+      console.warn('Prefs server fetch failed, using localStorage:', e.message);
+    }
+    this._serverHadData = serverHadData;
+
     this.applyAccent();
-    const hasSavedRooms = this.loadRooms();
 
     const raw = await API.getAccessories();
     this.accessories = this.processAccessories(raw);
 
-    if (!hasSavedRooms) {
+    if (this.rooms.length === 0) {
       this.buildDefaultRooms();
     } else {
       // Migrate any sibling-uid references in saved data → primary uids.
       this._migrateUidReferences();
     }
+
+    // Enable server pushes for any subsequent save* calls.
+    this._syncEnabled = true;
+
+    // First-ever load (server file missing): seed it with whatever we
+    // have locally so a second device boots with the same state.
+    if (!this._serverHadData) this._queueSync();
   }
 
 };

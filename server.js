@@ -66,6 +66,38 @@ function getToken(cb) {
   });
 }
 
+// ── Casa Control prefs (cross-device sync) ──────────
+// One JSON file on the Pi holds everything user-settable: prefs,
+// deviceNames, deviceTypes, rooms, favorites. Each browser fetches
+// on init and PUTs the whole bundle on change. Endpoints declared
+// BEFORE the generic /api proxy so they're served locally.
+const PREFS_DIR = '/var/lib/homebridge/dashboard';
+const PREFS_FILE = path.join(PREFS_DIR, 'prefs.json');
+
+app.get('/api/prefs', (req, res) => {
+  try {
+    if (!fs.existsSync(PREFS_FILE)) return res.json({});
+    const raw = fs.readFileSync(PREFS_FILE, 'utf8');
+    res.type('application/json').send(raw);
+  } catch (e) {
+    console.error('prefs read failed:', e.message);
+    res.status(500).json({ error: 'prefs read failed', detail: e.message });
+  }
+});
+
+app.put('/api/prefs', (req, res) => {
+  try {
+    if (!fs.existsSync(PREFS_DIR)) fs.mkdirSync(PREFS_DIR, { recursive: true });
+    const tmp = PREFS_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(req.body, null, 2));
+    fs.renameSync(tmp, PREFS_FILE);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('prefs write failed:', e.message);
+    res.status(500).json({ error: 'prefs write failed', detail: e.message });
+  }
+});
+
 // ── Pi health stats ─────────────────────────────────
 // Reads from /proc and /sys directly — no extra deps. Endpoint is
 // declared BEFORE the generic /api proxy so it's served locally.

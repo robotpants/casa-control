@@ -338,9 +338,14 @@ const App = {
   },
 
   // ── Weather ────────────────────────────────────────
+  // Cache the most recent forecast so the weather view can render
+  // instantly from cache while a fresh fetch happens in the background.
+  _weatherCache: null,
+
   async fetchWeather() {
     try {
       const data = await API.getWeather();
+      this._weatherCache = data;
       const temp = Math.round(data.current.temperature_2m);
       const code = data.current.weather_code;
       const tempEl = document.getElementById('outsideTemp');
@@ -353,6 +358,150 @@ const App = {
       const tempEl = document.getElementById('outsideTemp');
       if (tempEl) tempEl.textContent = '--°';
     }
+  },
+
+  // ── Weather view ──────────────────────────────────
+  async openWeather() {
+    this.navFrom = this.currentView;
+    this.currentView = 'weather';
+    this.showView('weather');
+    UI.setActiveNav('home'); // stays under Home
+
+    if (this._weatherCache) this.renderWeather(this._weatherCache);
+    else document.getElementById('weatherContent').innerHTML =
+      '<div style="padding:40px 0;text-align:center;color:var(--text-muted)">Loading…</div>';
+
+    try {
+      const data = await API.getWeather();
+      this._weatherCache = data;
+      this.renderWeather(data);
+    } catch (e) {
+      document.getElementById('weatherContent').innerHTML =
+        '<div style="padding:40px 0;text-align:center;color:var(--danger)">Failed to load forecast</div>';
+      console.error(e);
+    }
+  },
+
+  closeWeather() {
+    const back = this.navFrom === 'devices' ? 'devices' : 'home';
+    this.showView(back);
+    this.currentView = back;
+    UI.setActiveNav(back);
+    if (back === 'devices') this.renderDevicesView();
+  },
+
+  renderWeather(data) {
+    const c = document.getElementById('weatherContent');
+    if (!c) return;
+    const cur = data.current || {};
+    const day = (data.daily || {});
+    const hr  = (data.hourly || {});
+
+    const code = cur.weather_code;
+    const isDay = cur.is_day === 1;
+
+    // Hero
+    const heroIcon  = UI.weatherIcon(code, isDay);
+    const heroLabel = UI.weatherLabel(code);
+    const temp      = Math.round(cur.temperature_2m);
+    const feels     = Math.round(cur.apparent_temperature);
+    const humidity  = Math.round(cur.relative_humidity_2m);
+    const wind      = Math.round(cur.wind_speed_10m);
+    const gust      = Math.round(cur.wind_gusts_10m);
+    const cloud     = Math.round(cur.cloud_cover);
+    const uvToday   = day.uv_index_max?.[0];
+    const rainToday = day.precipitation_probability_max?.[0];
+    const sunrise   = day.sunrise?.[0];
+    const sunset    = day.sunset?.[0];
+
+    const hero = `
+      <div class="wx-hero neu-raised">
+        <div class="wx-hero-icon">${ic(heroIcon, 64)}</div>
+        <div class="wx-hero-temp">${temp}°</div>
+        <div class="wx-hero-cond">${heroLabel}</div>
+        <div class="wx-hero-sub">Feels like ${feels}° · ${humidity}% humidity</div>
+      </div>`;
+
+    const cond = (icon, val, label) => `
+      <div class="wx-cond neu-raised">
+        <div class="wxc-icon">${ic(icon, 18)}</div>
+        <div class="wxc-val">${val}</div>
+        <div class="wxc-label">${label}</div>
+      </div>`;
+
+    const conditionsGrid = `
+      <div class="wx-cond-grid">
+        ${cond('wind', `${wind} mph`, gust ? `Wind · ${gust} gust` : 'Wind')}
+        ${cond('droplet', `${humidity}%`, 'Humidity')}
+        ${cond('sun', uvToday != null ? Math.round(uvToday) : '—', 'UV Index')}
+        ${cond('cloudRain', `${rainToday ?? 0}%`, 'Rain')}
+        ${cond('cloud', `${cloud}%`, 'Cloud Cover')}
+        ${cond('sunset', this._fmtTime(sunset), `Sunset · ${this._fmtTime(sunrise)} rise`)}
+      </div>`;
+
+    // Hourly: next 12 hours starting from current hour
+    const now = new Date();
+    let startIdx = (hr.time || []).findIndex(t => new Date(t) >= now);
+    if (startIdx < 0) startIdx = 0;
+    const hours = (hr.time || []).slice(startIdx, startIdx + 12).map((t, i) => {
+      const idx = startIdx + i;
+      return {
+        hour: this._fmtHour(t, i === 0),
+        icon: UI.weatherIcon(hr.weather_code[idx], hr.is_day[idx] === 1),
+        temp: Math.round(hr.temperature_2m[idx]),
+        rain: hr.precipitation_probability[idx] || 0,
+      };
+    });
+    const hourly = `
+      <div class="section-label">Next 12 Hours</div>
+      <div class="wx-hourly">
+        ${hours.map(h => `
+          <div class="wx-hour neu-raised">
+            <div class="wxh-time">${h.hour}</div>
+            <div class="wxh-icon">${ic(h.icon, 22)}</div>
+            <div class="wxh-temp">${h.temp}°</div>
+            ${h.rain > 0 ? `<div class="wxh-rain">${h.rain}%</div>` : '<div class="wxh-rain">&nbsp;</div>'}
+          </div>`).join('')}
+      </div>`;
+
+    // Daily: next 7 days
+    const days = (day.time || []).map((t, i) => ({
+      name: i === 0 ? 'Today' : new Date(t + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }),
+      icon: UI.weatherIcon(day.weather_code[i], true),
+      hi: Math.round(day.temperature_2m_max[i]),
+      lo: Math.round(day.temperature_2m_min[i]),
+      rain: day.precipitation_probability_max[i] || 0,
+    }));
+    const daily = `
+      <div class="section-label">7-Day Forecast</div>
+      <div class="wx-daily">
+        ${days.map(d => `
+          <div class="wx-day neu-raised">
+            <div class="wxd-name">${d.name}</div>
+            <div class="wxd-icon">${ic(d.icon, 20)}</div>
+            <div class="wxd-rain">${d.rain > 0 ? d.rain + '%' : ''}</div>
+            <div class="wxd-temps"><span class="wxd-hi">${d.hi}°</span><span class="wxd-lo">${d.lo}°</span></div>
+          </div>`).join('')}
+      </div>`;
+
+    c.innerHTML = hero + conditionsGrid + hourly + daily;
+  },
+
+  // Format an ISO timestamp as "9 AM" / local hour
+  _fmtHour(iso, isNow) {
+    if (isNow) return 'Now';
+    const d = new Date(iso);
+    const h = d.getHours();
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
+  },
+
+  // Format an ISO timestamp as "6:42 PM"
+  _fmtTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   },
 
   // ── Reset rooms ────────────────────────────────────

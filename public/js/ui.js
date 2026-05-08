@@ -84,21 +84,29 @@ const UI = {
   },
 
   // ── Weather icon helper ────────────────────────────
-  weatherIcon(code) {
-    if (code === 0) return 'sun';
-    if (code <= 3) return 'cloudSun';
+  // Optional isDay flag swaps clear-sky icon to moon at night.
+  weatherIcon(code, isDay = true) {
+    if (code === 0) return isDay ? 'sun' : 'moon';
+    if (code <= 3) return isDay ? 'cloudSun' : 'cloud';
     if (code <= 48) return 'cloud';
     if (code <= 67) return 'cloudRain';
+    if (code <= 77) return 'cloud';      // snow — fallback to cloud
+    if (code <= 82) return 'cloudRain';  // rain showers
+    if (code <= 99) return 'cloudRain';  // thunder
     return 'cloud';
   },
 
   weatherLabel(code) {
     if (code === 0) return 'Clear';
-    if (code <= 3) return 'Cloudy';
+    if (code <= 2) return 'Mostly Clear';
+    if (code === 3) return 'Cloudy';
     if (code <= 48) return 'Foggy';
+    if (code <= 57) return 'Drizzle';
     if (code <= 67) return 'Rainy';
     if (code <= 77) return 'Snowy';
-    if (code <= 99) return 'Stormy';
+    if (code <= 82) return 'Showers';
+    if (code <= 86) return 'Snow Showers';
+    if (code <= 99) return 'Thunderstorm';
     return 'Unknown';
   },
 

@@ -76,9 +76,29 @@ const API = {
   },
 
   // ── Weather (Open-Meteo, no key needed) ──────────
+  // Returns full forecast: current conditions, 24h hourly, 7-day daily.
   async getWeather(lat = 34.1164, lon = -118.3390) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=America/Los_Angeles`;
-    const res = await fetch(url);
+    const params = new URLSearchParams({
+      latitude: lat,
+      longitude: lon,
+      current: [
+        'temperature_2m', 'relative_humidity_2m', 'apparent_temperature',
+        'is_day', 'weather_code', 'wind_speed_10m', 'wind_direction_10m',
+        'wind_gusts_10m', 'precipitation', 'cloud_cover'
+      ].join(','),
+      hourly: 'temperature_2m,precipitation_probability,weather_code,is_day',
+      daily: [
+        'weather_code', 'temperature_2m_max', 'temperature_2m_min',
+        'sunrise', 'sunset', 'uv_index_max',
+        'precipitation_probability_max', 'precipitation_sum'
+      ].join(','),
+      temperature_unit: 'fahrenheit',
+      wind_speed_unit: 'mph',
+      precipitation_unit: 'inch',
+      timezone: 'America/Los_Angeles',
+      forecast_days: 7,
+    });
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
     if (!res.ok) throw new Error('Weather fetch failed');
     return res.json();
   }

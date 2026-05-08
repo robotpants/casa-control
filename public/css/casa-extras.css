@@ -25,8 +25,13 @@ body { zoom: var(--ui-scale); }
 /* ── Light card offline state ──────────────────────── */
 .light-card.offline { opacity: .5; }
 
+/* ── Color picker spacing override ─────────────────── */
+/* Smartmorphic's default gap is 8px which collides with .selected
+   (transform:scale(1.18) + 5px ring + 14px glow). Bump to 14px so the
+   active dot has breathing room. */
+.color-row { gap: 14px; }
+
 /* ── Theme mode picker (Light / Dark / Auto) ───────── */
-.theme-mode-picker {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;

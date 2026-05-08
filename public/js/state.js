@@ -163,12 +163,18 @@ const State = {
   },
 
   // ── Devices with low battery ──────────────────────
-  // "Low" = StatusLowBattery flag OR level < 20%
+  // "Low" = StatusLowBattery flag OR level < 20.
+  // Deduped by aid so multi-button remotes (Hue Dimmer, etc.)
+  // show as one physical device instead of one entry per button.
   getLowBatteryDevices() {
+    const seen = new Set();
     return this.accessories.filter(a => {
       const b = this.getBattery(a);
       if (!b) return false;
-      return b.low || (b.level !== null && b.level < 20);
+      if (!(b.low || (b.level !== null && b.level < 20))) return false;
+      if (seen.has(a.aid)) return false;
+      seen.add(a.aid);
+      return true;
     });
   },
 

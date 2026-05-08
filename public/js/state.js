@@ -28,6 +28,7 @@ const State = {
   prefs: {
     accent: null,                          // hex string or null = default ember
     themeMode: 'auto',                     // 'auto' | 'light' | 'dark'
+    houseName: 'Casa Control',
     weatherZip: null,
     weatherLat: 34.1164,
     weatherLon: -118.3390,

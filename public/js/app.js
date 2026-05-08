@@ -135,6 +135,8 @@ const App = {
     // Greeting
     const greet = document.getElementById('greetingText');
     if (greet) greet.textContent = UI.greeting();
+    const house = document.getElementById('houseName');
+    if (house) house.textContent = State.prefs.houseName || 'Casa Control';
 
     // Status cards
     const lightCount = document.getElementById('activeLightCount');
@@ -322,6 +324,23 @@ const App = {
         </div>
       </div>
 
+      <div class="section-label">House</div>
+      <div class="settings-group">
+        <div class="settings-item neu-raised" style="display:block">
+          <div class="left" style="margin-bottom:10px">
+            <div class="s-icon">${ic('home', 18)}</div>
+            <div>
+              <div class="s-label">House Name</div>
+              <div class="s-sub">Shown under the greeting</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding-left:48px">
+            <input class="modal-input" id="houseNameInput" placeholder="e.g. The Smith House" value="${(State.prefs.houseName || '').replace(/"/g, '&quot;')}" maxlength="40" style="flex:1">
+            <button class="modal-btn primary" style="flex:0 0 auto;padding:10px 20px" onclick="App.setHouseName()">Set</button>
+          </div>
+        </div>
+      </div>
+
       <div class="section-label">Location</div>
       <div class="settings-group">
         <div class="settings-item neu-raised" style="display:block">
@@ -379,7 +398,7 @@ const App = {
             <div class="s-icon">${ic('home', 18)}</div>
             <div>
               <div class="s-label">Casa Control</div>
-              <div class="s-sub">v0.0.3 · ${State.accessories.length} accessories</div>
+              <div class="s-sub">v0.0.4 · ${State.accessories.length} accessories</div>
             </div>
           </div>
         </div>
@@ -915,6 +934,17 @@ const App = {
     if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  },
+
+  // ── House name preference ──────────────────────────
+  setHouseName() {
+    const inp = document.getElementById('houseNameInput');
+    const name = (inp?.value || '').trim();
+    State.prefs.houseName = name || 'Casa Control';
+    State.savePrefs();
+    const house = document.getElementById('houseName');
+    if (house) house.textContent = State.prefs.houseName;
+    UI.toast('Saved');
   },
 
   // ── Accent color preference ────────────────────────

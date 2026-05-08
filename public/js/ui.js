@@ -6,18 +6,50 @@
 const UI = {
 
   // ── Theme ─────────────────────────────────────────
+  // Three modes: 'auto' (follow system), 'light', 'dark'.
+  // applyTheme resolves mode → State.isDark and paints.
   applyTheme() {
+    const mode = State.prefs?.themeMode || 'auto';
+    if (mode === 'auto') {
+      State.isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } else {
+      State.isDark = mode === 'dark';
+    }
     const theme = State.isDark ? 'dark' : '';
     document.documentElement.setAttribute('data-theme', theme);
     document.body.setAttribute('data-theme', theme);
     document.documentElement.style.background = State.isDark ? '#1a1b22' : '#e2e4ec';
     document.body.style.background = State.isDark ? '#1a1b22' : '#e2e4ec';
     this.updateThemeIcons();
+    this._installSystemThemeListener();
   },
 
+  // Toggle between light and dark explicitly (used by header buttons).
+  // Switches mode out of 'auto' to whichever opposite the user wants.
   toggleTheme() {
-    State.isDark = !State.isDark;
+    const next = State.isDark ? 'light' : 'dark';
+    State.prefs.themeMode = next;
+    State.savePrefs();
     this.applyTheme();
+  },
+
+  // Set theme mode explicitly (used by Settings picker).
+  setThemeMode(mode) {
+    State.prefs.themeMode = mode;
+    State.savePrefs();
+    this.applyTheme();
+  },
+
+  // Listen once for OS-level theme changes; only re-paints when in auto mode.
+  _installSystemThemeListener() {
+    if (this._systemListenerInstalled) return;
+    this._systemListenerInstalled = true;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => {
+      if ((State.prefs?.themeMode || 'auto') === 'auto') this.applyTheme();
+    };
+    if (mq.addEventListener) mq.addEventListener('change', handler);
+    else mq.addListener(handler); // older Safari
   },
 
   updateThemeIcons() {

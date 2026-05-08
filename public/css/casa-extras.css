@@ -25,6 +25,42 @@ body { zoom: var(--ui-scale); }
 /* ── Light card offline state ──────────────────────── */
 .light-card.offline { opacity: .5; }
 
+/* ── Theme mode picker (Light / Dark / Auto) ───────── */
+.theme-mode-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.theme-mode-btn {
+  flex: 1;
+  min-width: 80px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--neu-raised-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow .15s, color .15s, transform .1s;
+}
+
+.theme-mode-btn:active { transform: scale(.97); }
+
+.theme-mode-btn.active {
+  color: var(--accent);
+  box-shadow: var(--neu-pressed-sm);
+}
+
+.theme-mode-btn .icon { font-size: 16px; }
+
 /* ── Debug Playground ──────────────────────────────── */
 .dbg-section {
   margin-bottom: 24px;

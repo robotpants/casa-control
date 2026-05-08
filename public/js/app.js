@@ -16,6 +16,7 @@ const App = {
 
     try {
       await State.init();
+      UI.applyTheme(); // re-apply once prefs are loaded (themeMode may differ)
       UI.hideLoading();
       this.render();
       this.fetchWeather();
@@ -285,20 +286,28 @@ const App = {
             style="background:${p.hex}${State.prefs.accent === p.hex || (!State.prefs.accent && p.key === 'ember') ? `;color:${p.hex}` : ''}"
             onclick="App.setAccent('${p.hex}')"></span>`).join('');
 
+    const themeMode = State.prefs.themeMode || 'auto';
+    const themeBtn = (mode, label, icon) => `
+      <button class="theme-mode-btn ${themeMode === mode ? 'active' : ''}"
+              onclick="UI.setThemeMode('${mode}');App.renderSettingsView()">
+        ${ic(icon, 16)}<span>${label}</span>
+      </button>`;
+
     content.innerHTML = `
       <div class="section-label">Appearance</div>
       <div class="settings-group">
-        <div class="settings-item neu-raised">
-          <div class="left">
-            <div class="s-icon">${ic('moon', 18)}</div>
+        <div class="settings-item neu-raised" style="display:block">
+          <div class="left" style="margin-bottom:10px">
+            <div class="s-icon">${ic(State.isDark ? 'moon' : 'sun', 18)}</div>
             <div>
-              <div class="s-label">Dark Mode</div>
-              <div class="s-sub">Toggle theme</div>
+              <div class="s-label">Theme</div>
+              <div class="s-sub">${themeMode === 'auto' ? `Auto · currently ${State.isDark ? 'dark' : 'light'}` : `Locked ${themeMode}`}</div>
             </div>
           </div>
-          <div class="toggle ${State.isDark ? 'on' : ''}" id="settingsThemeToggle"
-               onclick="UI.toggleTheme();App.renderSettingsView()">
-            <div class="knob"></div>
+          <div class="theme-mode-picker" style="padding-left:48px">
+            ${themeBtn('light', 'Light', 'sun')}
+            ${themeBtn('dark', 'Dark', 'moon')}
+            ${themeBtn('auto', 'Auto', 'activity')}
           </div>
         </div>
         <div class="settings-item neu-raised" style="display:block">
@@ -370,7 +379,7 @@ const App = {
             <div class="s-icon">${ic('home', 18)}</div>
             <div>
               <div class="s-label">Casa Control</div>
-              <div class="s-sub">v0.0.2 · ${State.accessories.length} accessories</div>
+              <div class="s-sub">v0.0.3 · ${State.accessories.length} accessories</div>
             </div>
           </div>
         </div>

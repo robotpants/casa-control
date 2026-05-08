@@ -463,12 +463,18 @@ const State = {
     const info = a.accessoryInformation || {};
     const mfg = (info.Manufacturer || '').trim();
     const model = (info.Model || '').trim();
-    const sn = (info.SerialNumber || '').trim();
+    // Homebridge config-ui-x exposes "Serial Number" with a space; some
+    // plugins/codepaths also use "SerialNumber". Accept either.
+    const sn = (info['Serial Number'] || info.SerialNumber || '').trim();
     const name = (info.Name || '').trim();
     if (mfg && model && sn && sn.length >= 4 && name) {
       return `phys:${mfg}|${model}|${sn}|${name}`;
     }
-    return `aid:${a.aid}`;
+    // aid alone collides across child bridges (Lutron aid 9 vs Hue aid 9),
+    // so include uniqueId-prefix as a tiebreaker — same physical device
+    // shares its uniqueId prefix family, while items on different bridges
+    // hash to different prefixes.
+    return `aid:${a.aid}|${(a.uniqueId || '').slice(0, 8)}`;
   },
 
   // Strip trailing button suffixes from a service name

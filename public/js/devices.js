@@ -374,8 +374,16 @@ const Devices = {
     return Math.round(value) + '%';
   },
 
+  // Pending toggles (request deduplication)
+  _toggling: new Set(),
+  // Recently-toggled devices: uid → expiresAt timestamp.
+  // Refresh skips these so the optimistic value isn't overwritten by
+  // the API still reporting the pre-toggle state for a few seconds.
+  _recentToggles: {},
+
   // ── Toggle on/off ──────────────────────────────────
   async toggle(uniqueId) {
+    if (this._toggling.has(uniqueId)) return;  // dedupe rapid taps
     const accessory = State.getAccessory(uniqueId);
     if (!accessory) return;
 
@@ -383,7 +391,7 @@ const Devices = {
     const targetState = !wasOn;
     const type = State.getType(accessory);
 
-    // Optimistic UI update
+    this._toggling.add(uniqueId);
     this.updateIndicator(uniqueId, targetState);
 
     try {
@@ -403,13 +411,18 @@ const Devices = {
         }
       }
 
+      // Trust our own write for a few seconds — many plugins lag updating
+      // the cache, so an immediate refresh would flip the toggle back.
+      this._recentToggles[uniqueId] = Date.now() + 5000;
+
       this.updateStatus(uniqueId);
       Rooms.render();
     } catch (e) {
-      // Revert on failure
       this.updateIndicator(uniqueId, wasOn);
-      UI.toast('Failed to update device');
+      UI.toast(e.name === 'AbortError' ? 'Device timed out' : 'Failed to update device');
       console.error(e);
+    } finally {
+      this._toggling.delete(uniqueId);
     }
   },
 

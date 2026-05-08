@@ -7,9 +7,20 @@ const API = {
 
   // ── Accessories ───────────────────────────────────
 
+  // ── Internal: fetch with timeout (kills hung requests) ─
+  async _fetch(url, opts = {}, timeoutMs = 8000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...opts, signal: ctrl.signal });
+    } finally {
+      clearTimeout(t);
+    }
+  },
+
   // Get all accessories
   async getAccessories() {
-    const res = await fetch('/api/accessories');
+    const res = await this._fetch('/api/accessories');
     if (!res.ok) throw new Error('Failed to fetch accessories');
     return res.json();
   },
@@ -18,7 +29,7 @@ const API = {
   // uniqueId is the Homebridge accessory uniqueId (hex string)
   // charType is the characteristic type name (e.g. "On", "Brightness", "RotationSpeed")
   async setCharacteristic(uniqueId, charType, value) {
-    const res = await fetch(`/api/accessories/${uniqueId}`, {
+    const res = await this._fetch(`/api/accessories/${uniqueId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

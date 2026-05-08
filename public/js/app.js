@@ -51,8 +51,12 @@ const App = {
 
   // ── Surgical update — toggle/indicator/status only ─
   _refreshInPlace() {
+    const now = Date.now();
     for (const acc of State.accessories) {
       const uid = acc.uniqueId;
+      // Skip devices the user just toggled — the API may still report
+      // the old state for a few seconds after the write.
+      if ((Devices._recentToggles?.[uid] ?? 0) > now) continue;
       const ind = document.getElementById(`ind-${uid}`);
       const tog = document.getElementById(`tog-${uid}`);
       const st  = document.getElementById(`st-${uid}`);

@@ -19,6 +19,9 @@
 ### Matter / smart-home protocol stance
 - Audit which devices in the setup support Matter (Hue Bridge does, Lutron doesn't, Levoit/Dreo no). Where possible, prefer Matter-native pairing over plugin bridges to reduce moving parts. Casa Control already speaks to Homebridge generically — Matter support would route through Homebridge's Matter bridge or via a dedicated Matter controller. Discuss separately: does the Pi run a Matter controller? If so, can Casa Control query it directly without Homebridge in the middle?
 
+### Aqara
+- **Patch `homebridge-plugin-aqara` for Homebridge v2 compatibility.** Plugin (v0.1.0 by @baranwang) fails to load with `Package subpath './lib/logger' is not defined by "exports"` — uses HB v1 internal API paths that v2 removed. Plan: fork the repo, replace internal imports with the public homebridge API (logger comes in via the platform constructor), install the patched version locally, send PR upstream. Estimate 30 min – 2 hr depending on how many internal imports there are. If it cascades, fall back to the Zigbee2MQTT route ($25 USB stick + homebridge-z2m).
+
 ### Infra
 - **Upgrade Node.js to v24 LTS** on the Pi to match Homebridge v2's recommendation. Currently v22.20.0 works fine but Homebridge logs a warning. Run `sudo hb-service update-node` then reboot. Do it on a quiet day in case a plugin misbehaves on the new major.
 

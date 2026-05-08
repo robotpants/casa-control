@@ -573,7 +573,13 @@ const Devices = {
       </div>
       <div class="modal-field">
         <label>Type</label>
-        <div style="font-size:13px;color:var(--text-secondary);font-family:var(--font-mono)">
+        <select class="modal-input" id="deviceTypeSelect">
+          <option value="">Auto-detect (${State.TYPE_LABELS[State.autoType(acc)] || State.autoType(acc)})</option>
+          ${Object.entries(State.TYPE_LABELS).map(([k, label]) =>
+            `<option value="${k}" ${State.deviceTypes[uid] === k ? 'selected' : ''}>${label}</option>`
+          ).join('')}
+        </select>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:var(--font-mono)">
           ${acc.humanType || 'Unknown'}
         </div>
       </div>
@@ -593,6 +599,7 @@ const Devices = {
     if (!acc) return;
     const newName = (document.getElementById('deviceNameInput')?.value || '').trim();
     const newRoomId = document.getElementById('deviceRoomSelect')?.value || '';
+    const newType = document.getElementById('deviceTypeSelect')?.value || '';
 
     // Name override (local only — Homebridge UI keeps the technical name)
     if (newName && newName !== acc.serviceName) {
@@ -601,6 +608,14 @@ const Devices = {
       delete State.deviceNames[uid];
     }
     State.saveDeviceNames();
+
+    // Type override — empty string means "use auto-detect"
+    if (newType && newType !== State.autoType(acc)) {
+      State.deviceTypes[uid] = newType;
+    } else {
+      delete State.deviceTypes[uid];
+    }
+    State.saveDeviceTypes();
 
     // Room re-assignment (one-room-per-device rule)
     for (const r of State.rooms) {

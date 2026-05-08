@@ -19,6 +19,22 @@ const State = {
   // Map of uniqueId → custom name. Falls back to accessory.serviceName.
   deviceNames: {},
 
+  // ── Per-device type overrides (persisted) ─────────
+  // Map of uniqueId → type string ('light', 'switch', 'fan', etc.).
+  // Lets users force a switch/outlet to render as a light, etc.
+  deviceTypes: {},
+
+  // Human-readable labels for picker UI
+  TYPE_LABELS: {
+    light:    'Light',
+    switch:   'Switch / Outlet',
+    fan:      'Fan',
+    purifier: 'Air Purifier',
+    heater:   'Heater / Cooler',
+    sensor:   'Sensor',
+    remote:   'Remote',
+  },
+
   // ── UI state ──────────────────────────────────────
   currentRoomId: null,
   editMode: false,
@@ -104,6 +120,27 @@ const State = {
       const saved = localStorage.getItem('cc-names');
       if (saved) { this.deviceNames = JSON.parse(saved); }
     } catch(e) {}
+  },
+
+  // ── Persist device type overrides to localStorage ─
+  saveDeviceTypes() {
+    try { localStorage.setItem('cc-types', JSON.stringify(this.deviceTypes)); } catch(e) {}
+  },
+
+  loadDeviceTypes() {
+    try {
+      const saved = localStorage.getItem('cc-types');
+      if (saved) { this.deviceTypes = JSON.parse(saved); }
+    } catch(e) {}
+  },
+
+  // Auto-detected type (no override applied) — used by the picker UI
+  // to show "Auto-detect (X)" so users know what'd happen if they clear
+  // their override.
+  autoType(accessory) {
+    const ht = accessory.humanType;
+    if (ht in this.typeMap) return this.typeMap[ht];
+    return 'unknown';
   },
 
   // ── Get the user-facing name for an accessory ─────
@@ -232,7 +269,10 @@ const State = {
   },
 
   // ── Get device type ────────────────────────────────
+  // User override wins; otherwise auto-detect from humanType.
   getType(accessory) {
+    const override = this.deviceTypes[accessory.uniqueId];
+    if (override) return override;
     const ht = accessory.humanType;
     if (ht in this.typeMap) return this.typeMap[ht];
     return 'unknown';
@@ -402,6 +442,7 @@ const State = {
   async init() {
     this.loadFavorites();
     this.loadDeviceNames();
+    this.loadDeviceTypes();
     const hasSavedRooms = this.loadRooms();
 
     const raw = await API.getAccessories();

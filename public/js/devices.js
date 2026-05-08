@@ -417,7 +417,14 @@ const Devices = {
       })
       .catch(e => {
         this.updateIndicator(uniqueId, wasOn);
-        UI.toast(e.name === 'AbortError' ? 'Device timed out' : 'Failed to update device');
+        // Clear the grace window so the next refresh poll can resync
+        // the actual on-device state instead of holding our wrong
+        // optimistic value for the full 10s.
+        delete this._recentToggles[uniqueId];
+        let msg = 'Failed to update device';
+        if (e.name === 'AbortError') msg = 'Device timed out';
+        else if (e.mismatch) msg = 'Device ignored the change';
+        UI.toast(msg);
         console.error(e);
       });
   },

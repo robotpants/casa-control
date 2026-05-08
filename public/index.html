@@ -1,1 +1,193 @@
-<!-- Main HTML entry point for the Casa Control web app -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Casa Control</title>
+
+<!-- Browser tab favicon (inline SVG, light theme) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8653a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='24' height='24' rx='5' fill='%23e2e4ec' stroke='none'/><g transform='translate(0,0.5)'><path d='M9 18h6'/><path d='M10 22h4'/><path d='M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14'/></g></svg>">
+
+<!-- iOS Add-to-Home-Screen -->
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Casa Control">
+
+<!-- PWA manifest (Android + Chrome installable) -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#e2e4ec">
+
+<link rel="stylesheet" href="css/smartmorphic.css">
+<link rel="stylesheet" href="css/casa-extras.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- Loading state -->
+  <div id="loadingState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:var(--text-muted)">
+    <div class="icon-well lg" id="loadingIcon"></div>
+    <div style="font-family:var(--font-display);font-size:16px">Connecting to Homebridge...</div>
+  </div>
+
+  <!-- Error state -->
+  <div id="errorState" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;color:var(--danger);padding:40px;text-align:center">
+    <div class="icon-well lg" id="errorIcon" style="color:var(--danger)"></div>
+    <div style="font-family:var(--font-display);font-size:16px"></div>
+  </div>
+
+  <!-- ── Home View ── -->
+  <div class="view active" id="homeView">
+    <div class="home-header">
+      <div class="greeting">
+        <h1 id="greetingText">Good Evening</h1>
+        <div class="sub">Nick's Home</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="header-btn neu-btn" onclick="Rooms.toggleEditMode()" id="editBtn"></div>
+        <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon></div>
+      </div>
+    </div>
+
+    <div class="stagger">
+      <!-- Status row -->
+      <div class="status-row">
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-t"></div>
+          <div class="status-value">72°</div>
+          <div class="status-label">Inside</div>
+        </div>
+        <div class="status-card neu-raised" onclick="App.openWeather()" style="cursor:pointer">
+          <div class="status-icon" id="ico-out"></div>
+          <div class="status-value" id="outsideTemp">--°</div>
+          <div class="status-label" id="outsideLabel">Outside</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-s"></div>
+          <div class="status-value" style="color:var(--success)">OK</div>
+          <div class="status-label">Security</div>
+        </div>
+        <div class="status-card neu-raised">
+          <div class="status-icon" id="ico-l"></div>
+          <div class="status-value" id="activeLightCount">0</div>
+          <div class="status-label">Lights On</div>
+        </div>
+      </div>
+
+      <!-- Low battery banner -->
+      <div id="lowBatterySection" style="display:none"></div>
+
+      <!-- Favorites -->
+      <div id="favSection" style="display:none"></div>
+
+      <!-- Rooms -->
+      <div class="section-label">Rooms</div>
+      <div class="room-grid" id="roomGrid"></div>
+    </div>
+  </div>
+
+  <!-- ── Room View ── -->
+  <div class="view" id="roomView">
+    <div class="room-header">
+      <div class="back-btn neu-btn" onclick="App.goBack()" id="backBtn">
+        <!-- chevLeft injected by app.js -->
+      </div>
+      <div class="room-title-block">
+        <h1 id="rvTitle"></h1>
+        <div class="sub" id="rvSub"></div>
+      </div>
+      <div class="header-btn neu-btn" id="rvEditBtn" onclick="Rooms.openEditModal(State.currentRoomId)" style="width:36px;height:36px"></div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="roomContent"></div>
+  </div>
+
+  <!-- ── Devices View ── -->
+  <div class="view" id="devicesView">
+    <div class="room-header">
+      <div class="room-title-block" style="margin-left:4px">
+        <h1>All Devices</h1>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="devicesContent"></div>
+  </div>
+
+  <!-- ── Debug Playground View ── -->
+  <div class="view" id="debugView">
+    <div class="room-header">
+      <div class="room-title-block" style="margin-left:4px">
+        <h1>Debug Playground</h1>
+        <div class="sub">Every component, dummied out</div>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="debugContent"></div>
+  </div>
+
+  <!-- ── Weather View ── -->
+  <div class="view" id="weatherView">
+    <div class="room-header">
+      <div class="back-btn neu-btn" onclick="App.closeWeather()" id="weatherBackBtn"></div>
+      <div class="room-title-block">
+        <h1>Weather</h1>
+        <div class="sub" id="weatherLocation">Los Angeles, CA</div>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="weatherContent"></div>
+  </div>
+
+  <!-- ── Settings View ── -->
+  <div class="view" id="settingsView">
+    <div class="room-header">
+      <div class="room-title-block" style="margin-left:4px">
+        <h1>Settings</h1>
+        <div class="sub">Preferences & system</div>
+      </div>
+      <div class="header-btn neu-btn" onclick="UI.toggleTheme()" data-theme-icon style="width:36px;height:36px"></div>
+    </div>
+    <div class="stagger" id="settingsContent"></div>
+  </div>
+
+  <!-- ── Bottom Nav ── -->
+  <div class="bottom-nav" id="bottomNav"></div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)UI.closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text-primary);color:var(--bg);padding:10px 24px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;pointer-events:none;z-index:300;font-family:var(--font-sans)"></div>
+
+<!-- Scripts -->
+<script src="icons/icons.js"></script>
+<script src="js/api.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/devices.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  // Set static button icons after scripts load
+  document.addEventListener('DOMContentLoaded', () => {
+    const set = (id, name, size) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = ic(name, size);
+    };
+    set('backBtn', 'chevLeft', 20);
+    set('weatherBackBtn', 'chevLeft', 20);
+    set('rvEditBtn', 'edit', 16);
+    set('loadingIcon', 'home', 24);
+    set('errorIcon', 'alertCircle', 24);
+  });
+</script>
+
+</body>
+</html>

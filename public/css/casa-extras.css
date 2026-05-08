@@ -32,6 +32,7 @@ body { zoom: var(--ui-scale); }
 .color-row { gap: 14px; }
 
 /* ── Theme mode picker (Light / Dark / Auto) ───────── */
+.theme-mode-picker {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;

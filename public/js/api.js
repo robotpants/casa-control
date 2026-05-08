@@ -75,6 +75,13 @@ const API = {
     return this.setCharacteristic(accessory.uniqueId, char.type, value);
   },
 
+  // ── Pi health stats (served by our own Express server) ─
+  async getPiStats() {
+    const res = await fetch('/api/pi-stats');
+    if (!res.ok) throw new Error('Pi stats fetch failed');
+    return res.json();
+  },
+
   // ── Weather (Open-Meteo, no key needed) ──────────
   // Returns full forecast: current conditions, 24h hourly, 7-day daily.
   async getWeather(lat = 34.1164, lon = -118.3390) {

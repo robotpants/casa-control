@@ -9,6 +9,9 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const { execSync } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,6 +65,51 @@ function getToken(cb) {
     cb(null, token);
   });
 }
+
+// ── Pi health stats ─────────────────────────────────
+// Reads from /proc and /sys directly — no extra deps. Endpoint is
+// declared BEFORE the generic /api proxy so it's served locally.
+app.get('/api/pi-stats', (req, res) => {
+  const stats = { ok: true };
+
+  // CPU temp (Raspberry Pi exposes deci-degrees Celsius)
+  try {
+    const raw = fs.readFileSync('/sys/class/thermal/thermal_zone0/temp', 'utf8').trim();
+    stats.cpuTempC = parseInt(raw, 10) / 1000;
+  } catch (_) { stats.cpuTempC = null; }
+
+  // Memory (bytes)
+  stats.memTotal = os.totalmem();
+  stats.memFree = os.freemem();
+  stats.memUsedPct = Math.round(((stats.memTotal - stats.memFree) / stats.memTotal) * 100);
+
+  // 1-min load average; CPU count for normalization
+  const [load1] = os.loadavg();
+  const cores = os.cpus().length;
+  stats.load1 = load1;
+  stats.cpuPct = Math.min(100, Math.round((load1 / cores) * 100));
+  stats.cpuCores = cores;
+
+  // Uptime (seconds)
+  stats.uptimeSec = Math.round(os.uptime());
+
+  // Root filesystem usage (df -k /)
+  try {
+    const dfOut = execSync('df -k /', { encoding: 'utf8' });
+    const parts = dfOut.trim().split('\n')[1].split(/\s+/);
+    stats.diskTotal = parseInt(parts[1], 10) * 1024;
+    stats.diskUsed = parseInt(parts[2], 10) * 1024;
+    stats.diskUsedPct = parseInt(parts[4], 10);
+  } catch (_) {
+    stats.diskTotal = stats.diskUsed = stats.diskUsedPct = null;
+  }
+
+  // Hostname + Node version (informational)
+  stats.hostname = os.hostname();
+  stats.nodeVersion = process.version;
+
+  res.json(stats);
+});
 
 // ── Proxy all /api/* to Homebridge ──────────────────
 app.use('/api', (req, res) => {

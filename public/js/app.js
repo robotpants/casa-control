@@ -350,6 +350,19 @@ const App = {
           </div>
         </div>
       </div>
+      <div class="section-label">Pi Health</div>
+      <div class="settings-group" id="piStatsContainer">
+        <div class="settings-item neu-raised">
+          <div class="left">
+            <div class="s-icon">${ic('activity', 18)}</div>
+            <div>
+              <div class="s-label">Loading…</div>
+              <div class="s-sub">Reading from /proc</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="section-label">About</div>
       <div class="settings-group">
         <div class="settings-item neu-raised">
@@ -357,11 +370,85 @@ const App = {
             <div class="s-icon">${ic('home', 18)}</div>
             <div>
               <div class="s-label">Casa Control</div>
-              <div class="s-sub">v0.0.1 · ${State.accessories.length} accessories</div>
+              <div class="s-sub">v0.0.2 · ${State.accessories.length} accessories</div>
             </div>
           </div>
         </div>
       </div>`;
+
+    this._loadPiStats();
+  },
+
+  // Fetch Pi health stats from our local server endpoint.
+  async _loadPiStats() {
+    try {
+      const s = await API.getPiStats();
+      const cont = document.getElementById('piStatsContainer');
+      if (!cont) return;
+
+      const fmtBytes = (b) => {
+        if (b == null) return '—';
+        const gb = b / (1024 ** 3);
+        return gb >= 1 ? `${gb.toFixed(1)} GB` : `${Math.round(b / (1024 ** 2))} MB`;
+      };
+      const fmtUptime = (s) => {
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        if (d > 0) return `${d}d ${h}h`;
+        if (h > 0) return `${h}h ${m}m`;
+        return `${m}m`;
+      };
+
+      const tempC = s.cpuTempC;
+      const tempF = tempC != null ? Math.round(tempC * 9 / 5 + 32) : null;
+      const tempColor = tempC == null ? 'var(--text-muted)'
+        : tempC < 60 ? 'var(--success)'
+        : tempC < 75 ? 'var(--warning)' : 'var(--danger)';
+
+      const row = (icon, label, value, sub, color) => `
+        <div class="settings-item neu-raised">
+          <div class="left">
+            <div class="s-icon" ${color ? `style="color:${color}"` : ''}>${ic(icon, 18)}</div>
+            <div>
+              <div class="s-label">${label}</div>
+              <div class="s-sub">${sub}</div>
+            </div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:14px;font-weight:600${color ? `;color:${color}` : ''}">${value}</div>
+        </div>`;
+
+      cont.innerHTML =
+        row('thermometer', 'CPU Temperature',
+            tempC != null ? `${Math.round(tempC)}°C` : '—',
+            tempF != null ? `${tempF}°F` : 'Sensor unavailable',
+            tempColor) +
+        row('activity', 'CPU Load',
+            `${s.cpuPct}%`,
+            `1m load ${s.load1.toFixed(2)} · ${s.cpuCores} cores`) +
+        row('layers', 'Memory',
+            `${s.memUsedPct}%`,
+            `${fmtBytes(s.memTotal - s.memFree)} of ${fmtBytes(s.memTotal)}`) +
+        row('warehouse', 'Disk',
+            s.diskUsedPct != null ? `${s.diskUsedPct}%` : '—',
+            s.diskTotal != null ? `${fmtBytes(s.diskUsed)} of ${fmtBytes(s.diskTotal)}` : 'Unavailable') +
+        row('power', 'Uptime',
+            fmtUptime(s.uptimeSec),
+            `${s.hostname} · Node ${s.nodeVersion}`);
+    } catch (e) {
+      const cont = document.getElementById('piStatsContainer');
+      if (cont) cont.innerHTML = `
+        <div class="settings-item neu-raised">
+          <div class="left">
+            <div class="s-icon" style="color:var(--danger)">${ic('alertCircle', 18)}</div>
+            <div>
+              <div class="s-label">Failed to read Pi stats</div>
+              <div class="s-sub">${e.message}</div>
+            </div>
+          </div>
+        </div>`;
+      console.error(e);
+    }
   },
 
   // ── Room navigation ────────────────────────────────

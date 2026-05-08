@@ -222,7 +222,7 @@ const Rooms = {
               <label class="device-pick-row ${checked ? 'checked' : ''}">
                 <input type="checkbox" class="device-pick-cb" data-uid="${a.uniqueId}" ${checked ? 'checked' : ''}>
                 <span class="device-pick-icon">${ic(UI.deviceIcon(a), 14)}</span>
-                <span class="device-pick-name">${a.serviceName}</span>
+                <span class="device-pick-name">${State.displayName(a)}</span>
                 ${other ? `<span class="device-pick-other">${other.name}</span>` : ''}
               </label>`;
           }).join('')}

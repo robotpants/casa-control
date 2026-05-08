@@ -7,6 +7,7 @@ const Devices = {
 
   // ── Color presets (real-world bulb colors, never UI accents) ─
   TEMP_PRESETS: [
+    { key: 'candle',   name: 'Candle',   kelvin: 2300, swatch: '#f5b577' },
     { key: 'warm',     name: 'Warm',     kelvin: 2700, swatch: '#f6cf99' },
     { key: 'soft',     name: 'Soft',     kelvin: 3000, swatch: '#f8e4c4' },
     { key: 'daylight', name: 'Daylight', kelvin: 5000, swatch: '#f4ecdb' },
@@ -46,8 +47,8 @@ const Devices = {
           <div class="icon-well ${isOn ? 'on' : ''}" id="ind-${accessory.uniqueId}">
             ${ic(icon, 18)}
           </div>
-          <div class="light-info">
-            <div class="light-name">${accessory.serviceName}</div>
+          <div class="light-info" onclick="event.stopPropagation();Devices.openManageModal('${accessory.uniqueId}')" title="Tap to rename or move">
+            <div class="light-name">${State.displayName(accessory)}</div>
             <div class="light-status" id="st-${accessory.uniqueId}">
               ${isOffline ? '<span style="color:var(--danger)">Offline</span>' : status}
             </div>
@@ -292,15 +293,17 @@ const Devices = {
     const maxM = tChar.maxValue ?? 500;
     const mireds = Math.max(minM, Math.min(maxM, Math.round(1000000 / p.kelvin)));
     try {
-      await API.setCharacteristic(uid, 'ColorTemperature', mireds);
-      State.updateCharValue(acc.aid, tChar.iid, mireds);
-      // Picking a temp implies white mode — drop saturation so the bulb shows white-ish
-      if (sChar && sChar.value > 0) {
+      // Drop saturation FIRST — Hue bulbs ignore ColorTemperature while in
+      // color mode (saturation > 0), so the temp change gets stuck mid-state
+      // unless we exit color mode first.
+      if (sChar) {
         try {
           await API.setCharacteristic(uid, 'Saturation', 0);
           State.updateCharValue(acc.aid, sChar.iid, 0);
         } catch (_) { /* ignore */ }
       }
+      await API.setCharacteristic(uid, 'ColorTemperature', mireds);
+      State.updateCharValue(acc.aid, tChar.iid, mireds);
       this._highlightPreset(uid, p);
       const knob = document.getElementById(`knob-${uid}-temp`);
       const val = document.getElementById(`val-${uid}-temp`);
@@ -371,6 +374,7 @@ const Devices = {
 
     const wasOn = State.isOn(accessory);
     const targetState = !wasOn;
+    const type = State.getType(accessory);
 
     // Optimistic UI update
     this.updateIndicator(uniqueId, targetState);
@@ -379,6 +383,19 @@ const Devices = {
       await API.setOnOff(accessory, targetState);
       const char = accessory.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
       if (char) State.updateCharValue(accessory.aid, char.iid, targetState ? 1 : 0);
+
+      // Fans/purifiers: some plugins (Dreo, others) need RotationSpeed=0
+      // to actually stop. Active=0 alone leaves them spinning.
+      if (!targetState && (type === 'fan' || type === 'purifier')) {
+        const speedChar = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
+        if (speedChar && (speedChar.value ?? 0) > 0) {
+          try {
+            await API.setCharacteristic(uniqueId, 'RotationSpeed', 0);
+            State.updateCharValue(accessory.aid, speedChar.iid, 0);
+          } catch (_) { /* ignore secondary failure */ }
+        }
+      }
+
       this.updateStatus(uniqueId);
       Rooms.render();
     } catch (e) {
@@ -472,6 +489,84 @@ const Devices = {
   toggleExpand(uniqueId) {
     const card = document.getElementById(`card-${uniqueId}`);
     if (card) card.classList.toggle('expanded');
+  },
+
+  // ── Manage modal (rename + room assignment) ───────
+  openManageModal(uid) {
+    const acc = State.getAccessory(uid);
+    if (!acc) return;
+    const currentName = State.displayName(acc);
+    const currentRoom = State.rooms.find(r => (r.deviceIds || []).includes(uid));
+    const isCustom = !!State.deviceNames[uid];
+
+    UI.openModal(`
+      <h2>Manage Device</h2>
+      <div class="modal-field">
+        <label>Display Name</label>
+        <input class="modal-input" id="deviceNameInput" value="${currentName.replace(/"/g, '&quot;')}" maxlength="40" autocomplete="off">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:var(--font-mono)">
+          ${isCustom ? `Original: ${acc.serviceName}` : `&nbsp;`}
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Room</label>
+        <select class="modal-input" id="deviceRoomSelect">
+          <option value="">— Unassigned —</option>
+          ${State.rooms.map(r => `
+            <option value="${r.id}" ${currentRoom?.id === r.id ? 'selected' : ''}>${r.name}</option>
+          `).join('')}
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Type</label>
+        <div style="font-size:13px;color:var(--text-secondary);font-family:var(--font-mono)">
+          ${acc.humanType || 'Unknown'}
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn secondary" onclick="UI.closeModal()">Cancel</button>
+        <button class="modal-btn primary" onclick="Devices.saveManage('${uid}')">Save</button>
+      </div>`);
+    setTimeout(() => {
+      const inp = document.getElementById('deviceNameInput');
+      if (inp) { inp.focus(); inp.select(); }
+    }, 350);
+  },
+
+  saveManage(uid) {
+    const acc = State.getAccessory(uid);
+    if (!acc) return;
+    const newName = (document.getElementById('deviceNameInput')?.value || '').trim();
+    const newRoomId = document.getElementById('deviceRoomSelect')?.value || '';
+
+    // Name override (local only — Homebridge UI keeps the technical name)
+    if (newName && newName !== acc.serviceName) {
+      State.deviceNames[uid] = newName;
+    } else {
+      delete State.deviceNames[uid];
+    }
+    State.saveDeviceNames();
+
+    // Room re-assignment (one-room-per-device rule)
+    for (const r of State.rooms) {
+      r.deviceIds = (r.deviceIds || []).filter(id => id !== uid);
+    }
+    if (newRoomId) {
+      const room = State.rooms.find(r => r.id === newRoomId);
+      if (room) {
+        room.deviceIds = room.deviceIds || [];
+        room.deviceIds.push(uid);
+      }
+    }
+    State.saveRooms();
+
+    UI.closeModal();
+    Rooms.render();
+    if (App.currentView === 'room' && State.currentRoomId) {
+      Rooms.renderRoomContent(State.currentRoomId);
+    }
+    if (App.currentView === 'devices') App.renderDevicesView();
+    UI.toast('Device updated');
   },
 
   // ── Favorites ─────────────────────────────────────

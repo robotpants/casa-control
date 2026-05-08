@@ -154,7 +154,7 @@ const App = {
         <div class="lbb-icon">${ic('batteryLow', 18)}</div>
         <div class="lbb-text">
           <div class="lbb-title">${lows.length === 1 ? '1 device needs a battery' : `${lows.length} devices need batteries`}</div>
-          <div class="lbb-sub">${sorted.map(a => `${this._cleanDeviceName(a.serviceName)} ${State.getBattery(a)?.level ?? '?'}%`).slice(0, 3).join(' · ')}${sorted.length > 3 ? ' · …' : ''}</div>
+          <div class="lbb-sub">${sorted.map(a => `${this._cleanDeviceName(State.displayName(a))} ${State.getBattery(a)?.level ?? '?'}%`).slice(0, 3).join(' · ')}${sorted.length > 3 ? ' · …' : ''}</div>
         </div>
         <div class="lbb-pct ${worst < 10 ? 'critical' : ''}">${worst}%</div>
       </div>`;

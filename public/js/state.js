@@ -15,6 +15,10 @@ const State = {
   // ── Favorites (persisted to localStorage) ─────────
   favorites: [],
 
+  // ── Per-device custom display names (persisted) ───
+  // Map of uniqueId → custom name. Falls back to accessory.serviceName.
+  deviceNames: {},
+
   // ── UI state ──────────────────────────────────────
   currentRoomId: null,
   editMode: false,
@@ -78,6 +82,25 @@ const State = {
       const saved = localStorage.getItem('cc-favs');
       if (saved) { this.favorites = JSON.parse(saved); }
     } catch(e) {}
+  },
+
+  // ── Persist device name overrides to localStorage ─
+  saveDeviceNames() {
+    try { localStorage.setItem('cc-names', JSON.stringify(this.deviceNames)); } catch(e) {}
+  },
+
+  loadDeviceNames() {
+    try {
+      const saved = localStorage.getItem('cc-names');
+      if (saved) { this.deviceNames = JSON.parse(saved); }
+    } catch(e) {}
+  },
+
+  // ── Get the user-facing name for an accessory ─────
+  // Custom name from localStorage if set, else the Homebridge serviceName.
+  displayName(accessory) {
+    if (!accessory) return '';
+    return this.deviceNames[accessory.uniqueId] || accessory.serviceName;
   },
 
   // ── Build rooms from accessory data ───────────────
@@ -221,6 +244,7 @@ const State = {
   // ── Initialize ────────────────────────────────────
   async init() {
     this.loadFavorites();
+    this.loadDeviceNames();
     const hasSavedRooms = this.loadRooms();
 
     const raw = await API.getAccessories();

@@ -412,6 +412,19 @@ const Devices = {
           }
         }
 
+        // Dimmers (notably Lutron Caseta PD-6WCL): On=1 alone leaves
+        // Brightness at 0, so the light "turns on" at 0% and the slider
+        // sticks at 0. Bump to 100 on first On so the user sees light.
+        if (targetState && type === 'light') {
+          const brightChar = accessory.serviceCharacteristics.find(c => c.type === 'Brightness');
+          if (brightChar && (brightChar.value ?? 0) === 0) {
+            // Update state first so the Rooms.render() below paints 100%.
+            State.updateCharValue(accessory.aid, brightChar.iid, 100);
+            API.setCharacteristic(uniqueId, 'Brightness', 100)
+              .catch(() => { /* secondary; ignore */ });
+          }
+        }
+
         this.updateStatus(uniqueId);
         Rooms.render();
       })

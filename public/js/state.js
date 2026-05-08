@@ -77,6 +77,45 @@ const State = {
   // Earlier in the list wins.
   TYPE_PRIORITY: ['light', 'switch', 'fan', 'purifier', 'heater', 'sensor', 'remote', 'unknown'],
 
+  // ── Capability tracking ───────────────────────────
+  // Characteristics Casa Control actually does something with.
+  SUPPORTED_CHARS: new Set([
+    'On', 'Active',
+    'Brightness', 'RotationSpeed',
+    'ColorTemperature', 'Hue', 'Saturation',
+    'CurrentTemperature',
+    'BatteryLevel', 'StatusLowBattery', 'ChargingState',
+    'FilterLifeLevel',
+  ]),
+
+  // Characteristics that exist but aren't user-facing features
+  // (metadata, identifiers, status flags). Skipped from the count
+  // so coverage isn't artificially diluted.
+  META_CHARS: new Set([
+    'Identifier', 'Name', 'ConfiguredName',
+    'Manufacturer', 'Model', 'SerialNumber',
+    'FirmwareRevision', 'HardwareRevision', 'Version',
+    'StatusFault', 'StatusActive', 'StatusTampered', 'StatusJammed',
+    'IsConfigured', 'ServiceLabelIndex', 'ServiceLabelNamespace',
+  ]),
+
+  // Returns { handled: [...], missing: [...] } — only counts
+  // user-facing feature characteristics (skips META).
+  getCapabilities(accessory) {
+    const chars = (accessory.serviceCharacteristics || []).map(c => c.type);
+    const handled = [];
+    const missing = [];
+    const seen = new Set();
+    for (const t of chars) {
+      if (seen.has(t)) continue;
+      seen.add(t);
+      if (this.META_CHARS.has(t)) continue;
+      if (this.SUPPORTED_CHARS.has(t)) handled.push(t);
+      else missing.push(t);
+    }
+    return { handled, missing };
+  },
+
   // ── Device type map ───────────────────────────────
   // Maps Homebridge humanType to our internal type
   // null = hidden from device list (junk, or surfaced elsewhere)

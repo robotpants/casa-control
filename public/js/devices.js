@@ -544,6 +544,26 @@ const Devices = {
     const currentRoom = State.rooms.find(r => (r.deviceIds || []).includes(uid));
     const isCustom = !!State.deviceNames[uid];
     const siblings = State.getSiblings(acc);
+    const caps = State.getCapabilities(acc);
+    const totalCaps = caps.handled.length + caps.missing.length;
+    const capPct = totalCaps > 0 ? Math.round((caps.handled.length / totalCaps) * 100) : 0;
+
+    const capabilitiesHTML = totalCaps === 0 ? '' : `
+      <div class="modal-field">
+        <label>Capabilities</label>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:600;color:${capPct === 100 ? 'var(--success)' : capPct >= 50 ? 'var(--text-primary)' : 'var(--warning)'}">${capPct}%</div>
+          <div style="color:var(--text-secondary)">${caps.handled.length} of ${totalCaps} handled by Casa Control</div>
+        </div>
+        ${caps.missing.length ? `
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:var(--font-mono);line-height:1.5">
+            <span style="color:var(--text-secondary)">Not yet supported:</span><br>
+            ${caps.missing.join(', ')}
+          </div>` : `
+          <div style="font-size:11px;color:var(--success);margin-top:6px">
+            Everything this device exposes is wired up.
+          </div>`}
+      </div>`;
 
     const subServicesHTML = siblings.length === 0 ? '' : `
       <div class="modal-field">
@@ -587,6 +607,7 @@ const Devices = {
           ${acc.humanType || 'Unknown'}
         </div>
       </div>
+      ${capabilitiesHTML}
       ${subServicesHTML}
       <div class="modal-actions">
         <button class="modal-btn secondary" onclick="UI.closeModal()">Cancel</button>

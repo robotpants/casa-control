@@ -115,6 +115,10 @@ const State = {
     const custom = this.deviceNames[accessory.uniqueId];
     if (custom) return custom;
     if ((this.siblings[accessory.uniqueId] || []).length) {
+      // Bundled — prefer the physical-device name from accessoryInformation
+      // (cleaner than stripping suffixes from the per-button serviceName).
+      const physName = accessory.accessoryInformation?.Name;
+      if (physName) return physName;
       return this.cleanName(accessory.serviceName);
     }
     return accessory.serviceName;
@@ -262,10 +266,14 @@ const State = {
 
     const filtered = deduped.filter(a => this.getType(a) !== null);
 
-    // Group by aid (HomeKit accessory ID = physical device).
+    // Group by physical device. Hue uses one shared aid for a Dimmer's
+    // 4 buttons (caught by aid). Lutron Pico exposes each button as its
+    // own aid but shares Manufacturer + Model + SerialNumber across all
+    // buttons of one physical remote — caught by the SN-based key.
     const groups = {};
     for (const a of filtered) {
-      (groups[a.aid] = groups[a.aid] || []).push(a);
+      const key = this._groupKey(a);
+      (groups[key] = groups[key] || []).push(a);
     }
 
     this.siblings = {};
@@ -304,6 +312,22 @@ const State = {
   getSiblings(accessory) {
     if (!accessory) return [];
     return this.siblings[accessory.uniqueId] || [];
+  },
+
+  // ── Group key for an accessory ────────────────────
+  // Prefer Manufacturer + Model + SerialNumber when all are reliably
+  // present (catches Lutron Pico — same SN across button accessories
+  // with different aids). Fall back to aid for plugins that don't
+  // expose accessoryInformation.
+  _groupKey(a) {
+    const info = a.accessoryInformation || {};
+    const mfg = (info.Manufacturer || '').trim();
+    const model = (info.Model || '').trim();
+    const sn = (info.SerialNumber || '').trim();
+    if (mfg && model && sn && sn.length >= 4) {
+      return `phys:${mfg}|${model}|${sn}`;
+    }
+    return `aid:${a.aid}`;
   },
 
   // Strip trailing button suffixes from a service name

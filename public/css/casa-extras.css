@@ -37,6 +37,10 @@
 }
 
 /* ── Edit Device button (inside expand panel) ──────── */
+/* Extra padding so the button's neumorphic shadow has room — the
+   parent .light-controls clips overflow during expand animation. */
+.light-card.expanded .light-controls { padding-bottom: 14px; padding-right: 4px; padding-left: 4px; }
+
 .device-edit-row {
   display: flex;
   justify-content: flex-end;
@@ -47,12 +51,15 @@
 [data-theme="dark"] .device-edit-row { border-top-color: rgba(255,255,255,.06); }
 
 .device-edit-row .neu-btn-rect {
-  padding: 8px 14px;
+  padding: 8px 16px;
   font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 2px;
 }
 .device-edit-row .neu-btn-rect:hover { color: var(--text-primary); }
-.device-edit-row .neu-btn-rect .icon { font-size: 14px; }
+.device-edit-row .neu-btn-rect .icon { font-size: 14px; flex-shrink: 0; }
 
 /* ── Edit mode (room cards) ────────────────────────── */
 .room-card .delete-btn,

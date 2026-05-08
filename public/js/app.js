@@ -187,17 +187,12 @@ const App = {
         <div class="lbb-icon">${ic('batteryLow', 18)}</div>
         <div class="lbb-text">
           <div class="lbb-title">${lows.length === 1 ? '1 device needs a battery' : `${lows.length} devices need batteries`}</div>
-          <div class="lbb-sub">${sorted.map(a => `${this._cleanDeviceName(State.displayName(a))} ${State.getBattery(a)?.level ?? '?'}%`).slice(0, 3).join(' · ')}${sorted.length > 3 ? ' · …' : ''}</div>
+          <div class="lbb-sub">${sorted.map(a => `${State.displayName(a)} ${State.getBattery(a)?.level ?? '?'}%`).slice(0, 3).join(' · ')}${sorted.length > 3 ? ' · …' : ''}</div>
         </div>
         <div class="lbb-pct ${worst < 10 ? 'critical' : ''}">${worst}%</div>
       </div>`;
   },
 
-  // Strip trailing button-name suffixes from multi-button remotes
-  // so "Hue Dimmer Living Room On" displays as "Hue Dimmer Living Room"
-  _cleanDeviceName(name) {
-    return (name || '').replace(/ (On|Off|Dim Up|Dim Down|Up|Down|Button [0-9]+|[0-9]+)$/, '');
-  },
 
   // ── Favorites section ─────────────────────────────
   renderFavorites() {

@@ -29,6 +29,16 @@ const State = {
   // index them on load and surface inline rather than as cards.
   batteries: {},
 
+  // ── Sibling services index (primary uid → [accessory, ...]) ─
+  // Multi-button remotes (Hue Dimmer = 4 buttons) and other
+  // multi-service devices show as one card with siblings tucked
+  // under the primary. The aid is the physical-device identifier.
+  siblings: {},
+
+  // Type priority for picking the primary service per aid group.
+  // Earlier in the list wins.
+  TYPE_PRIORITY: ['light', 'switch', 'fan', 'purifier', 'heater', 'sensor', 'remote', 'unknown'],
+
   // ── Device type map ───────────────────────────────
   // Maps Homebridge humanType to our internal type
   // null = hidden from device list (junk, or surfaced elsewhere)
@@ -97,10 +107,17 @@ const State = {
   },
 
   // ── Get the user-facing name for an accessory ─────
-  // Custom name from localStorage if set, else the Homebridge serviceName.
+  // Custom name (from localStorage) wins. Otherwise, if the
+  // accessory has hidden siblings (e.g. multi-button remote), strip
+  // the per-button suffix so we show the device name, not a button.
   displayName(accessory) {
     if (!accessory) return '';
-    return this.deviceNames[accessory.uniqueId] || accessory.serviceName;
+    const custom = this.deviceNames[accessory.uniqueId];
+    if (custom) return custom;
+    if ((this.siblings[accessory.uniqueId] || []).length) {
+      return this.cleanName(accessory.serviceName);
+    }
+    return accessory.serviceName;
   },
 
   // ── Build rooms from accessory data ───────────────
@@ -116,17 +133,83 @@ const State = {
   },
 
   // ── Get accessory by uniqueId ──────────────────────
+  // Looks up primaries first; if the id belongs to a hidden sibling,
+  // returns the primary so old localStorage references still resolve.
   getAccessory(uniqueId) {
-    return this.accessories.find(a => a.uniqueId === uniqueId);
+    const found = this.accessories.find(a => a.uniqueId === uniqueId);
+    if (found) return found;
+    for (const [primaryUid, sibs] of Object.entries(this.siblings)) {
+      if (sibs.some(s => s.uniqueId === uniqueId)) {
+        return this.accessories.find(a => a.uniqueId === primaryUid);
+      }
+    }
+    return undefined;
   },
 
-  // ── Get accessories for a room ────────────────────
+  // ── Get accessories for a room (deduped) ──────────
   getRoomAccessories(roomId) {
     const room = this.rooms.find(r => r.id === roomId);
     if (!room) return [];
-    return (room.deviceIds || [])
-      .map(id => this.getAccessory(id))
-      .filter(Boolean);
+    const seen = new Set();
+    const result = [];
+    for (const id of (room.deviceIds || [])) {
+      const acc = this.getAccessory(id);
+      if (acc && !seen.has(acc.uniqueId)) {
+        seen.add(acc.uniqueId);
+        result.push(acc);
+      }
+    }
+    return result;
+  },
+
+  // ── One-time migration: rewrite uid references from siblings → primaries
+  // Saved rooms / favorites / name overrides may point at hidden sibling
+  // uids from before bundling existed. Resolve them through getAccessory
+  // so everything points at the right primary going forward.
+  _migrateUidReferences() {
+    const resolveList = (ids) => {
+      const seen = new Set();
+      const out = [];
+      for (const id of (ids || [])) {
+        const a = this.getAccessory(id);
+        if (a && !seen.has(a.uniqueId)) {
+          seen.add(a.uniqueId);
+          out.push(a.uniqueId);
+        }
+      }
+      return out;
+    };
+    let dirty = false;
+    for (const r of this.rooms) {
+      const fixed = resolveList(r.deviceIds);
+      if (JSON.stringify(fixed) !== JSON.stringify(r.deviceIds)) {
+        r.deviceIds = fixed;
+        dirty = true;
+      }
+    }
+    if (dirty) this.saveRooms();
+
+    const fixedFavs = resolveList(this.favorites);
+    if (JSON.stringify(fixedFavs) !== JSON.stringify(this.favorites)) {
+      this.favorites = fixedFavs;
+      this.saveFavorites();
+    }
+
+    const newNames = {};
+    let nameDirty = false;
+    for (const [uid, name] of Object.entries(this.deviceNames || {})) {
+      const a = this.getAccessory(uid);
+      if (a) {
+        if (a.uniqueId !== uid) nameDirty = true;
+        newNames[a.uniqueId] = name;
+      } else {
+        nameDirty = true;
+      }
+    }
+    if (nameDirty) {
+      this.deviceNames = newNames;
+      this.saveDeviceNames();
+    }
   },
 
   // ── Get characteristic value from accessory ───────
@@ -152,7 +235,8 @@ const State = {
   },
 
   // ── Process raw accessories from Homebridge ───────
-  // Dedup, index batteries, then strip hidden types.
+  // Dedup → index batteries → strip hidden types → group by aid
+  // (one primary per physical device, siblings tucked away).
   processAccessories(raw) {
     const seen = new Set();
     const deduped = (raw || []).filter(a => {
@@ -176,7 +260,56 @@ const State = {
       };
     }
 
-    return deduped.filter(a => this.getType(a) !== null);
+    const filtered = deduped.filter(a => this.getType(a) !== null);
+
+    // Group by aid (HomeKit accessory ID = physical device).
+    const groups = {};
+    for (const a of filtered) {
+      (groups[a.aid] = groups[a.aid] || []).push(a);
+    }
+
+    this.siblings = {};
+    const primaries = [];
+    for (const group of Object.values(groups)) {
+      if (group.length === 1) {
+        primaries.push(group[0]);
+        continue;
+      }
+
+      // Bucket by internal type. For each type we keep one primary;
+      // any additional same-type services are siblings of that primary.
+      // This collapses Hue Dimmer's 4 button entries to 1 card,
+      // while still surfacing a light + sensor on the same physical
+      // device as two separate controllable cards.
+      const byType = {};
+      for (const a of group) {
+        const t = this.getType(a);
+        (byType[t] = byType[t] || []).push(a);
+      }
+      for (const t of this.TYPE_PRIORITY) {
+        if (!byType[t]) continue;
+        const sorted = byType[t].slice().sort((a, b) => (a.iid || 0) - (b.iid || 0));
+        const primary = sorted[0];
+        primaries.push(primary);
+        if (sorted.length > 1) {
+          this.siblings[primary.uniqueId] = sorted.slice(1);
+        }
+      }
+    }
+
+    return primaries;
+  },
+
+  // Sibling accessories under the same physical device
+  getSiblings(accessory) {
+    if (!accessory) return [];
+    return this.siblings[accessory.uniqueId] || [];
+  },
+
+  // Strip trailing button suffixes from a service name
+  // (Hue Dimmer "X On" / "X Dim Up" → "X").
+  cleanName(name) {
+    return (name || '').replace(/\s+(On|Off|Dim Up|Dim Down|Up|Down|Button \d+|\d+)$/i, '');
   },
 
   // ── Battery lookup (parent device → battery info) ─
@@ -252,6 +385,9 @@ const State = {
 
     if (!hasSavedRooms) {
       this.buildDefaultRooms();
+    } else {
+      // Migrate any sibling-uid references in saved data → primary uids.
+      this._migrateUidReferences();
     }
   }
 

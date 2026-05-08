@@ -515,6 +515,19 @@ const Devices = {
     const currentName = State.displayName(acc);
     const currentRoom = State.rooms.find(r => (r.deviceIds || []).includes(uid));
     const isCustom = !!State.deviceNames[uid];
+    const siblings = State.getSiblings(acc);
+
+    const subServicesHTML = siblings.length === 0 ? '' : `
+      <div class="modal-field">
+        <label>Sub-services (${siblings.length + 1})</label>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">
+          Bundled into one device. Tap-controllable from this card.
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);background:var(--surface);box-shadow:var(--neu-pressed-sm);padding:10px 12px;border-radius:var(--radius-sm);max-height:120px;overflow-y:auto">
+          <div>• ${acc.serviceName}</div>
+          ${siblings.map(s => `<div>• ${s.serviceName}</div>`).join('')}
+        </div>
+      </div>`;
 
     UI.openModal(`
       <h2>Manage Device</h2>
@@ -540,6 +553,7 @@ const Devices = {
           ${acc.humanType || 'Unknown'}
         </div>
       </div>
+      ${subServicesHTML}
       <div class="modal-actions">
         <button class="modal-btn secondary" onclick="UI.closeModal()">Cancel</button>
         <button class="modal-btn primary" onclick="Devices.saveManage('${uid}')">Save</button>

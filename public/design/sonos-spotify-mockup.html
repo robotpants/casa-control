@@ -167,24 +167,39 @@
     gap: 24px;
     margin-top: 12px;
   }
-  .np-transport-row .icon {
-    cursor: pointer;
+  .np-transport-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: none;
+    padding: 0;
     color: var(--text-secondary);
-    transition: color .15s, transform .1s;
+    box-shadow: var(--neu-raised-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: box-shadow .15s, transform .1s, color .15s;
   }
+  .np-transport-btn:active { box-shadow: var(--neu-pressed-sm); transform: scale(.96); }
   @media (hover: hover) {
-    .np-transport-row .icon:hover { color: var(--accent); }
+    .np-transport-btn:hover { color: var(--accent); }
   }
   .np-transport-row .np-play-big {
     width: 48px; height: 48px;
     border-radius: 50%;
-    background: var(--accent);
-    color: white !important;
+    background: var(--surface);
+    color: var(--accent);
+    border: none;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--neu-raised-sm), 0 0 14px var(--accent-glow);
+    box-shadow: var(--neu-raised-sm);
+    cursor: pointer;
+    transition: box-shadow .15s, transform .1s;
   }
+  .np-transport-row .np-play-big:active { box-shadow: var(--neu-pressed-sm); transform: scale(.96); }
   .np-volume-row {
     display: flex;
     align-items: center;
@@ -255,24 +270,24 @@
           <div class="toggle on"><div class="knob"></div></div>
         </div>
       </div>
-      <div class="mock-note">Toggle "on" = currently playing. Tap toggle → pauses.</div>
+      <div class="mock-note">Toggle on = speaker is selected for output. Status text reflects the queue's play state.</div>
     </div>
 
     <div class="mock-section mock-frame">
-      <div class="mock-label">Sonos · Paused (collapsed)</div>
+      <div class="mock-label">Sonos · Output disabled</div>
       <div class="light-card">
         <div class="light-top">
           <div class="icon-well" id="ico-sonos2"></div>
           <div class="light-info">
             <div class="light-name">Kitchen</div>
-            <div class="light-status">Paused</div>
+            <div class="light-status">Off</div>
           </div>
           <span class="icon" style="font-size:16px;color:var(--text-muted);padding:4px" id="star2"></span>
           <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px" id="chev2"></span>
           <div class="toggle"><div class="knob"></div></div>
         </div>
       </div>
-      <div class="mock-note">Toggle off = paused/stopped. Status reads "Paused" or "Stopped".</div>
+      <div class="mock-note">Toggle = speaker selected for audio output. Off means this speaker is not part of the active group.</div>
     </div>
 
     <div class="mock-section mock-frame">
@@ -393,9 +408,9 @@
           <span>4:19</span>
         </div>
         <div class="np-transport-row">
-          <span class="icon" style="font-size:24px" id="np-prev"></span>
-          <div class="np-play-big" id="np-play"></div>
-          <span class="icon" style="font-size:24px" id="np-next"></span>
+          <button class="np-transport-btn" type="button" id="np-prev"></button>
+          <button class="np-play-big" type="button" id="np-play"></button>
+          <button class="np-transport-btn" type="button" id="np-next"></button>
         </div>
         <div class="np-volume-row">
           <span class="icon" style="font-size:16px" id="np-vol-icon"></span>
@@ -547,43 +562,70 @@
     });
   });
 
-  // Sonos play/pause toggle — toggles state, syncs status text + in-card pause button
+  // Sonos cards have two independent states:
+  //   speakerOn  — toggle on right (whether this speaker is selected for output)
+  //   isPlaying  — set by the in-card play/pause button (the queue's play state)
+  // Status text is derived: !speakerOn → "Off", else playing/paused.
+  function renderStatus(card) {
+    const status = card.querySelector('.light-status');
+    if (!status) return;
+    const speakerOn = card.dataset.speakerOn === 'true';
+    const isPlaying = card.dataset.playing === 'true';
+    const track = card.dataset.track || '';
+    if (!speakerOn) status.textContent = 'Off';
+    else if (isPlaying) status.textContent = track ? `Playing · ${track}` : 'Playing';
+    else status.textContent = 'Paused';
+  }
+
+  // Initialize per-card state from existing DOM
+  document.querySelectorAll('.light-card').forEach(card => {
+    const toggle = card.querySelector('.toggle');
+    const status = card.querySelector('.light-status');
+    if (!toggle || !status) return;
+    card.dataset.speakerOn = toggle.classList.contains('on') ? 'true' : 'false';
+    const text = status.textContent.trim();
+    const m = text.match(/^Playing\s·\s(.+)$/);
+    if (m) {
+      card.dataset.playing = 'true';
+      card.dataset.track = m[1];
+    } else if (text === 'Playing') {
+      card.dataset.playing = 'true';
+    } else if (text === 'Paused') {
+      card.dataset.playing = 'false';
+    } else {
+      // "Off" or anything else — assume the queue is playing so toggling on shows audio
+      card.dataset.playing = 'true';
+    }
+  });
+
+  // Toggle = speaker output on/off (independent of play state)
   document.querySelectorAll('.toggle').forEach(toggle => {
     toggle.addEventListener('click', e => {
       e.stopPropagation();
       toggle.classList.toggle('on');
-      const isOn = toggle.classList.contains('on');
       const card = toggle.closest('.light-card');
       if (!card) return;
+      const speakerOn = toggle.classList.contains('on');
+      card.dataset.speakerOn = speakerOn ? 'true' : 'false';
       const iconWell = card.querySelector('.icon-well');
-      const status = card.querySelector('.light-status');
-      if (iconWell) iconWell.classList.toggle('on', isOn);
-      if (status) {
-        if (isOn) {
-          const trackPart = status.dataset.track || '';
-          status.textContent = trackPart ? `Playing · ${trackPart}` : 'Playing';
-        } else {
-          const m = status.textContent.match(/^Playing\s·\s(.+)$/);
-          if (m) status.dataset.track = m[1];
-          status.textContent = 'Paused';
-        }
-      }
-      const ppBtn = card.querySelector('.media-transport .neu-btn-rect.primary');
-      if (ppBtn) {
-        const spans = ppBtn.querySelectorAll('span');
-        if (spans[0]) spans[0].innerHTML = icon(isOn ? 'pause' : 'play', 14);
-        if (spans[spans.length - 1]) spans[spans.length - 1].textContent = isOn ? 'Pause' : 'Play';
-      }
+      if (iconWell) iconWell.classList.toggle('on', speakerOn);
+      renderStatus(card);
     });
   });
 
-  // In-card primary play/pause button mirrors the toggle
+  // In-card pause button = play/pause for this speaker's queue
   document.querySelectorAll('.media-transport .neu-btn-rect.primary').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const card = btn.closest('.light-card');
-      const toggle = card && card.querySelector('.toggle');
-      if (toggle) toggle.click();
+      if (!card) return;
+      const wasPlaying = card.dataset.playing === 'true';
+      const newPlaying = !wasPlaying;
+      card.dataset.playing = newPlaying ? 'true' : 'false';
+      const spans = btn.querySelectorAll('span');
+      if (spans[0]) spans[0].innerHTML = icon(newPlaying ? 'pause' : 'play', 14);
+      if (spans[spans.length - 1]) spans[spans.length - 1].textContent = newPlaying ? 'Pause' : 'Play';
+      renderStatus(card);
     });
   });
 
@@ -697,10 +739,6 @@
     });
   });
 
-  // Visual cursor cue for prev/next arrows
-  document.querySelectorAll('.np-transport-row .icon').forEach(el => {
-    if (!el.classList.contains('np-play-big')) el.style.cursor = 'pointer';
-  });
 })();
 </script>
 

@@ -49,9 +49,6 @@
     justify-content: center;
     gap: 6px;
   }
-  .media-transport .neu-btn-rect.primary {
-    color: var(--accent);
-  }
   .media-now-playing {
     padding: 10px 4px 4px;
     border-top: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
@@ -73,7 +70,9 @@
     cursor: pointer;
     transition: box-shadow .2s;
   }
-  .now-playing-widget:hover { box-shadow: var(--neu-raised-lg); }
+  @media (hover: hover) {
+    .now-playing-widget:hover { box-shadow: var(--neu-raised-lg); }
+  }
   .np-art {
     width: 44px; height: 44px;
     border-radius: 10px;
@@ -142,8 +141,9 @@
   .np-progress {
     height: 4px;
     border-radius: 2px;
-    background: var(--bg);
-    box-shadow: var(--neu-pressed);
+    background: var(--surface);
+    box-shadow: inset 1px 1px 2px var(--shadow-inset-dark),
+                inset -1px -1px 2px var(--shadow-inset-light);
     margin: 12px 0 4px;
     position: relative;
   }
@@ -172,7 +172,9 @@
     color: var(--text-secondary);
     transition: color .15s, transform .1s;
   }
-  .np-transport-row .icon:hover { color: var(--accent); }
+  @media (hover: hover) {
+    .np-transport-row .icon:hover { color: var(--accent); }
+  }
   .np-transport-row .np-play-big {
     width: 48px; height: 48px;
     border-radius: 50%;
@@ -283,7 +285,7 @@
             <div class="light-status">Playing · Come Together</div>
           </div>
           <span class="icon" style="font-size:16px;color:var(--accent);padding:4px" id="star3"></span>
-          <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;transform:rotate(180deg)" id="chev3"></span>
+          <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px" id="chev3"></span>
           <div class="toggle on"><div class="knob"></div></div>
         </div>
         <div class="light-controls">
@@ -329,7 +331,7 @@
             <div class="light-status">Playing</div>
           </div>
           <span class="icon" style="font-size:16px;color:var(--text-muted);padding:4px" id="star4"></span>
-          <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;transform:rotate(180deg)" id="chev4"></span>
+          <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px" id="chev4"></span>
           <div class="toggle on"><div class="knob"></div></div>
         </div>
         <div class="light-controls">
@@ -530,10 +532,15 @@
 
   // Card expand/collapse — only on cards with populated controls
   document.querySelectorAll('.light-card').forEach(card => {
-    const controls = card.querySelector('.light-controls');
-    if (!controls || !controls.children.length) return;
     const top = card.querySelector('.light-top');
     if (!top) return;
+    const controls = card.querySelector('.light-controls');
+    const hasControls = controls && controls.children.length > 0;
+    if (!hasControls) {
+      // No controls means clicking the card body does nothing — show default cursor
+      top.style.cursor = 'default';
+      return;
+    }
     top.addEventListener('click', e => {
       if (e.target.closest('.toggle, [id^="star"], button')) return;
       card.classList.toggle('expanded');
@@ -582,6 +589,7 @@
 
   // Star favorites
   document.querySelectorAll('[id^="star"]').forEach(star => {
+    star.style.cursor = 'pointer';
     const color = star.style.color || '';
     star.dataset.fav = color.includes('accent') ? 'true' : 'false';
     star.addEventListener('click', e => {

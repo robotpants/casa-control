@@ -1,5 +1,4 @@
 {
-  "outputDirectory": ".",
   "cleanUrls": true,
   "rewrites": [
     { "source": "/", "destination": "/design/sonos-spotify-mockup.html" }

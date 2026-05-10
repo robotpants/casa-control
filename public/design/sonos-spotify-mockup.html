@@ -286,7 +286,7 @@
           <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;transform:rotate(180deg)" id="chev3"></span>
           <div class="toggle on"><div class="knob"></div></div>
         </div>
-        <div class="light-controls" style="max-height:none;padding:14px 0 4px">
+        <div class="light-controls">
           <!-- Volume slider, real classes -->
           <div class="slider-row">
             <span class="slider-label">Vol</span>
@@ -332,7 +332,7 @@
           <span class="expand-btn icon" style="font-size:14px;color:var(--text-muted);padding:4px;transform:rotate(180deg)" id="chev4"></span>
           <div class="toggle on"><div class="knob"></div></div>
         </div>
-        <div class="light-controls" style="max-height:none;padding:14px 0 4px">
+        <div class="light-controls">
           <div class="slider-row">
             <span class="slider-label">Vol</span>
             <div class="slider-track">
@@ -521,6 +521,179 @@
   set('set-sp-icon2', 'music', 16);
   set('set-sp-btn1', 'plus', 14);
   set('set-sp-btn2', 'trash', 14);
+</script>
+
+<!-- ── Interactive behavior (mockup-only; no real API calls) ── -->
+<script>
+(function() {
+  const icon = (name, size) => `<span class="icon" style="font-size:${size||18}px">${(I[name])||''}</span>`;
+
+  // Card expand/collapse — only on cards with populated controls
+  document.querySelectorAll('.light-card').forEach(card => {
+    const controls = card.querySelector('.light-controls');
+    if (!controls || !controls.children.length) return;
+    const top = card.querySelector('.light-top');
+    if (!top) return;
+    top.addEventListener('click', e => {
+      if (e.target.closest('.toggle, [id^="star"], button')) return;
+      card.classList.toggle('expanded');
+    });
+  });
+
+  // Sonos play/pause toggle — toggles state, syncs status text + in-card pause button
+  document.querySelectorAll('.toggle').forEach(toggle => {
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      toggle.classList.toggle('on');
+      const isOn = toggle.classList.contains('on');
+      const card = toggle.closest('.light-card');
+      if (!card) return;
+      const iconWell = card.querySelector('.icon-well');
+      const status = card.querySelector('.light-status');
+      if (iconWell) iconWell.classList.toggle('on', isOn);
+      if (status) {
+        if (isOn) {
+          const trackPart = status.dataset.track || '';
+          status.textContent = trackPart ? `Playing · ${trackPart}` : 'Playing';
+        } else {
+          const m = status.textContent.match(/^Playing\s·\s(.+)$/);
+          if (m) status.dataset.track = m[1];
+          status.textContent = 'Paused';
+        }
+      }
+      const ppBtn = card.querySelector('.media-transport .neu-btn-rect.primary');
+      if (ppBtn) {
+        const spans = ppBtn.querySelectorAll('span');
+        if (spans[0]) spans[0].innerHTML = icon(isOn ? 'pause' : 'play', 14);
+        if (spans[spans.length - 1]) spans[spans.length - 1].textContent = isOn ? 'Pause' : 'Play';
+      }
+    });
+  });
+
+  // In-card primary play/pause button mirrors the toggle
+  document.querySelectorAll('.media-transport .neu-btn-rect.primary').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const card = btn.closest('.light-card');
+      const toggle = card && card.querySelector('.toggle');
+      if (toggle) toggle.click();
+    });
+  });
+
+  // Star favorites
+  document.querySelectorAll('[id^="star"]').forEach(star => {
+    const color = star.style.color || '';
+    star.dataset.fav = color.includes('accent') ? 'true' : 'false';
+    star.addEventListener('click', e => {
+      e.stopPropagation();
+      const isFav = star.dataset.fav === 'true';
+      star.dataset.fav = (!isFav).toString();
+      star.innerHTML = icon(!isFav ? 'starFill' : 'star', 16);
+      star.style.color = !isFav ? 'var(--accent)' : 'var(--text-muted)';
+    });
+  });
+
+  // Generic drag-to-set for .slider-track and .np-progress
+  function attachDrag(el, onUpdate) {
+    el.style.touchAction = 'none';
+    let dragging = false;
+    const handler = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragging = true;
+      const x0 = e.touches ? e.touches[0].clientX : e.clientX;
+      onUpdate(x0);
+      const move = ev => {
+        if (!dragging) return;
+        ev.preventDefault();
+        const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+        onUpdate(x);
+      };
+      const end = () => {
+        dragging = false;
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', end);
+        document.removeEventListener('touchmove', move);
+        document.removeEventListener('touchend', end);
+      };
+      if (e.type === 'mousedown') {
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', end);
+      } else {
+        document.addEventListener('touchmove', move, { passive: false });
+        document.addEventListener('touchend', end);
+      }
+    };
+    el.addEventListener('mousedown', handler);
+    el.addEventListener('touchstart', handler, { passive: false });
+  }
+
+  // Sliders (volume, etc.)
+  document.querySelectorAll('.slider-track').forEach(track => {
+    attachDrag(track, clientX => {
+      const rect = track.getBoundingClientRect();
+      let pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const fill = track.querySelector('.slider-fill');
+      if (fill) fill.style.width = pct + '%';
+      const row = track.closest('.slider-row, .np-volume-row');
+      const valEl = row && row.querySelector('.slider-value');
+      if (valEl) valEl.textContent = Math.round(pct) + '%';
+    });
+  });
+
+  // Spotify progress bar — drag to seek
+  document.querySelectorAll('.np-progress').forEach(progress => {
+    progress.style.cursor = 'pointer';
+    attachDrag(progress, clientX => {
+      const rect = progress.getBoundingClientRect();
+      let pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const fill = progress.querySelector('.np-progress-fill');
+      if (fill) fill.style.width = pct + '%';
+      const widget = progress.closest('.now-playing-widget');
+      const times = widget && widget.querySelector('.np-progress-times');
+      if (times) {
+        const total = 259; // 4:19 in seconds
+        const cur = Math.floor((pct / 100) * total);
+        const mm = Math.floor(cur / 60);
+        const ss = String(cur % 60).padStart(2, '0');
+        const spans = times.querySelectorAll('span');
+        if (spans[0]) spans[0].textContent = `${mm}:${ss}`;
+      }
+    });
+  });
+
+  // Spotify widget — tap to expand/collapse
+  document.querySelectorAll('.now-playing-widget').forEach(widget => {
+    widget.addEventListener('click', e => {
+      if (e.target.closest('.np-mini-toggle, .np-transport-row, .np-volume-row, .np-progress, button')) return;
+      widget.classList.toggle('expanded');
+    });
+  });
+
+  // Global Spotify play/pause sync (mini toggles + big button stay in lockstep)
+  let spotifyPlaying = true;
+  function setSpotifyPlaying(playing) {
+    spotifyPlaying = playing;
+    document.querySelectorAll('.np-mini-toggle').forEach(t => {
+      t.innerHTML = icon(playing ? 'pause' : 'play', 16);
+    });
+    document.querySelectorAll('.np-play-big').forEach(b => {
+      b.innerHTML = icon(playing ? 'pause' : 'play', 22);
+    });
+  }
+  document.querySelectorAll('.np-mini-toggle, .np-play-big').forEach(el => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      setSpotifyPlaying(!spotifyPlaying);
+    });
+  });
+
+  // Visual cursor cue for prev/next arrows
+  document.querySelectorAll('.np-transport-row .icon').forEach(el => {
+    if (!el.classList.contains('np-play-big')) el.style.cursor = 'pointer';
+  });
+})();
 </script>
 
 </body>

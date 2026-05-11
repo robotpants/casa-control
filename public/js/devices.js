@@ -290,7 +290,7 @@ const Devices = {
   },
 
   // ── Apply a temp preset (Kelvin → mireds) ──────────
-  async applyTempPreset(uid, key) {
+  applyTempPreset(uid, key) {
     const p = this.TEMP_PRESETS.find(x => x.key === key);
     const acc = State.getAccessory(uid);
     if (!p || !acc) return;
@@ -300,31 +300,50 @@ const Devices = {
     const minM = tChar.minValue ?? 140;
     const maxM = tChar.maxValue ?? 500;
     const mireds = Math.max(minM, Math.min(maxM, Math.round(1000000 / p.kelvin)));
-    try {
-      // Drop saturation FIRST — Hue bulbs ignore ColorTemperature while in
-      // color mode (saturation > 0), so the temp change gets stuck mid-state
-      // unless we exit color mode first.
-      if (sChar) {
-        try {
-          await API.setCharacteristic(uid, 'Saturation', 0);
-          State.updateCharValue(acc.aid, sChar.iid, 0);
-        } catch (_) { /* ignore */ }
+
+    // Capture pre-action state for revert
+    const wasMireds = tChar.value;
+    const wasSat = sChar?.value ?? null;
+    const needsSatDrop = sChar && wasSat > 0;
+
+    // ── Optimistic state + DOM ──
+    // Drop saturation FIRST in State — Hue bulbs ignore ColorTemperature
+    // while in color mode (saturation > 0), so the API call below sends
+    // Saturation=0 before the temp change.
+    if (needsSatDrop) State.updateCharValue(acc.aid, sChar.iid, 0);
+    State.updateCharValue(acc.aid, tChar.iid, mireds);
+    this._highlightPreset(uid, p);
+    const knob = document.getElementById(`knob-${uid}-temp`);
+    const valEl = document.getElementById(`val-${uid}-temp`);
+    if (knob) knob.style.left = ((mireds - minM) / (maxM - minM)) * 100 + '%';
+    if (valEl) valEl.textContent = p.kelvin + 'K';
+
+    // ── Fire API in background ──
+    const send = needsSatDrop
+      ? API.setCharacteristic(uid, 'Saturation', 0)
+          .catch(() => { /* secondary; let temp try anyway */ })
+          .then(() => API.setCharacteristic(uid, 'ColorTemperature', mireds))
+      : API.setCharacteristic(uid, 'ColorTemperature', mireds);
+
+    send.catch(e => {
+      // Revert State
+      State.updateCharValue(acc.aid, tChar.iid, wasMireds);
+      if (needsSatDrop) State.updateCharValue(acc.aid, sChar.iid, wasSat);
+      // Revert DOM
+      if (knob && wasMireds != null) {
+        knob.style.left = ((wasMireds - minM) / (maxM - minM)) * 100 + '%';
       }
-      await API.setCharacteristic(uid, 'ColorTemperature', mireds);
-      State.updateCharValue(acc.aid, tChar.iid, mireds);
-      this._highlightPreset(uid, p);
-      const knob = document.getElementById(`knob-${uid}-temp`);
-      const val = document.getElementById(`val-${uid}-temp`);
-      if (knob) knob.style.left = ((mireds - minM) / (maxM - minM)) * 100 + '%';
-      if (val) val.textContent = p.kelvin + 'K';
-    } catch (e) {
+      if (valEl && wasMireds != null) {
+        valEl.textContent = Math.round(1000000 / wasMireds) + 'K';
+      }
+      this._rehighlightFromState(uid);
       UI.toast('Failed to set color');
       console.error(e);
-    }
+    });
   },
 
   // ── Apply a color preset (Hue + Saturation) ────────
-  async applyColorPreset(uid, key) {
+  applyColorPreset(uid, key) {
     const p = this.COLOR_PRESETS.find(x => x.key === key);
     const acc = State.getAccessory(uid);
     if (!p || !acc) return;
@@ -332,22 +351,40 @@ const Devices = {
     const hChar = chars.find(c => c.type === 'Hue');
     const sChar = chars.find(c => c.type === 'Saturation');
     if (!hChar) return;
-    try {
-      await API.setCharacteristic(uid, 'Hue', p.hue);
-      State.updateCharValue(acc.aid, hChar.iid, p.hue);
-      if (sChar) {
-        await API.setCharacteristic(uid, 'Saturation', p.sat);
-        State.updateCharValue(acc.aid, sChar.iid, p.sat);
-      }
-      this._highlightPreset(uid, p);
-      const knob = document.getElementById(`knob-${uid}-hue`);
-      const val = document.getElementById(`val-${uid}-hue`);
-      if (knob) knob.style.left = (p.hue / 360) * 100 + '%';
-      if (val) val.textContent = Math.round(p.hue) + '°';
-    } catch (e) {
-      UI.toast('Failed to set color');
-      console.error(e);
-    }
+
+    // Capture pre-action state for revert
+    const wasHue = hChar.value;
+    const wasSat = sChar?.value ?? null;
+
+    // ── Optimistic state + DOM ──
+    State.updateCharValue(acc.aid, hChar.iid, p.hue);
+    if (sChar) State.updateCharValue(acc.aid, sChar.iid, p.sat);
+    this._highlightPreset(uid, p);
+    const knob = document.getElementById(`knob-${uid}-hue`);
+    const valEl = document.getElementById(`val-${uid}-hue`);
+    if (knob) knob.style.left = (p.hue / 360) * 100 + '%';
+    if (valEl) valEl.textContent = Math.round(p.hue) + '°';
+
+    // ── Fire API in background (Hue, then Saturation as secondary) ──
+    API.setCharacteristic(uid, 'Hue', p.hue)
+      .then(() => {
+        if (sChar) {
+          API.setCharacteristic(uid, 'Saturation', p.sat).catch(() => {
+            /* secondary; ignore */
+          });
+        }
+      })
+      .catch(e => {
+        // Revert State
+        State.updateCharValue(acc.aid, hChar.iid, wasHue);
+        if (sChar) State.updateCharValue(acc.aid, sChar.iid, wasSat);
+        // Revert DOM
+        if (knob && wasHue != null) knob.style.left = (wasHue / 360) * 100 + '%';
+        if (valEl && wasHue != null) valEl.textContent = Math.round(wasHue) + '°';
+        this._rehighlightFromState(uid);
+        UI.toast('Failed to set color');
+        console.error(e);
+      });
   },
 
   // ── Update the .selected dot in the color-row ──────
@@ -359,6 +396,32 @@ const Devices = {
       dot.classList.toggle('selected', isMatch);
       if (isMatch) dot.style.color = preset.swatch;
       else dot.style.removeProperty('color');
+    });
+  },
+
+  // ── Recompute and re-apply preset highlight from current State ──
+  // Used on preset-apply failure: revert the .selected dot to whatever
+  // preset (if any) matches the State after rollback.
+  _rehighlightFromState(uid) {
+    const acc = State.getAccessory(uid);
+    if (!acc) return;
+    const chars = acc.serviceCharacteristics || [];
+    const tChar = chars.find(c => c.type === 'ColorTemperature');
+    const hChar = chars.find(c => c.type === 'Hue');
+    const activeTempKey = this._activeTempPreset(acc, tChar);
+    const activeColorKey = this._activeColorPreset(acc, hChar);
+    const activeKey = activeTempKey || activeColorKey;
+    const row = document.getElementById(`color-${uid}`);
+    if (!row) return;
+    row.querySelectorAll('.color-dot[data-preset]').forEach(dot => {
+      const isMatch = dot.dataset.preset === activeKey;
+      dot.classList.toggle('selected', isMatch);
+      if (isMatch) {
+        const preset = [...this.TEMP_PRESETS, ...this.COLOR_PRESETS].find(p => p.key === activeKey);
+        if (preset) dot.style.color = preset.swatch;
+      } else {
+        dot.style.removeProperty('color');
+      }
     });
   },
 
@@ -491,6 +554,25 @@ const Devices = {
 
     const isDemo = uid && uid.startsWith('demo');
 
+    // Capture pre-slide value so we can revert on API failure
+    const acc = State.getAccessory(uid);
+    const sliderChar = (acc?.serviceCharacteristics || []).find(c => c.iid === iid);
+    const wasValue = sliderChar?.value ?? null;
+
+    // Paint the slider DOM at a specific value (used both during drag and on revert)
+    const applyVisual = (value) => {
+      const displayPct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+      if (mode === 'color') {
+        const knob = document.getElementById(`knob-${uid}-${prop}`);
+        if (knob) knob.style.left = displayPct + '%';
+      } else {
+        const fill = document.getElementById(`fill-${uid}-${prop}`);
+        if (fill) fill.style.width = displayPct + '%';
+      }
+      const val = document.getElementById(`val-${uid}-${prop}`);
+      if (val) val.textContent = this.sliderDisplay(prop, value);
+    };
+
     const update = (ev) => {
       const rect = track.getBoundingClientRect();
       const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
@@ -500,27 +582,14 @@ const Devices = {
       let value = min + (pct / 100) * (max - min);
       if (step > 0) value = Math.round(value / step) * step;
       value = Math.max(min, Math.min(max, value));
-
-      const displayPct = max > min ? ((value - min) / (max - min)) * 100 : 0;
-
-      if (mode === 'color') {
-        const knob = document.getElementById(`knob-${uid}-${prop}`);
-        if (knob) knob.style.left = displayPct + '%';
-      } else {
-        const fill = document.getElementById(`fill-${uid}-${prop}`);
-        if (fill) fill.style.width = displayPct + '%';
-      }
-
-      const val = document.getElementById(`val-${uid}-${prop}`);
-      if (val) val.textContent = this.sliderDisplay(prop, value);
-
+      applyVisual(value);
       return value;
     };
 
     let lastVal = update(e);
     App._isSliding = true;
 
-    const finish = async () => {
+    const finish = () => {
       App._isSliding = false;
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', finish);
@@ -529,24 +598,49 @@ const Devices = {
 
       if (isDemo) return;  // debug-playground sliders: visual only
 
-      try {
-        await API.setCharacteristic(uid, charType, lastVal);
-        State.updateCharValue(aid, iid, lastVal);
-        // When changing hue, force saturation to 100 so the color is actually visible
-        if (prop === 'hue') {
-          const acc = State.getAccessory(uid);
-          const sChar = (acc?.serviceCharacteristics || []).find(c => c.type === 'Saturation');
-          if (sChar && sChar.value !== 100) {
-            try {
-              await API.setCharacteristic(uid, 'Saturation', 100);
-              State.updateCharValue(aid, sChar.iid, 100);
-            } catch (_) { /* ignore secondary failure */ }
-          }
+      // ── Optimistic state + dependent UI ──
+      // State.updateCharValue first so updateStatus / updateBrightnessSlider
+      // / Rooms.render read the new value. Slider DOM is already correct
+      // from the drag. Status text (e.g. "75%") needs an explicit nudge.
+      State.updateCharValue(aid, iid, lastVal);
+
+      // Force Saturation to 100 when adjusting hue so the color is visible
+      // (Hue bulbs left in low-sat color mode look washed out).
+      let satForceWas = null;
+      let satForceChar = null;
+      if (prop === 'hue') {
+        const sChar = (acc?.serviceCharacteristics || []).find(c => c.type === 'Saturation');
+        if (sChar && sChar.value !== 100) {
+          satForceChar = sChar;
+          satForceWas = sChar.value;
+          State.updateCharValue(aid, sChar.iid, 100);
         }
-      } catch (err) {
-        UI.toast('Failed to update');
-        console.error(err);
       }
+
+      this.updateStatus(uid);
+      if (prop === 'brightness') this.updateBrightnessSlider(uid);
+
+      // ── Fire API in background ──
+      API.setCharacteristic(uid, charType, lastVal)
+        .then(() => {
+          if (satForceChar) {
+            API.setCharacteristic(uid, 'Saturation', 100).catch(() => {
+              /* secondary; ignore */
+            });
+          }
+        })
+        .catch(err => {
+          // Revert State + DOM
+          if (wasValue != null) {
+            State.updateCharValue(aid, iid, wasValue);
+            applyVisual(wasValue);
+          }
+          if (satForceChar) State.updateCharValue(aid, satForceChar.iid, satForceWas);
+          this.updateStatus(uid);
+          if (prop === 'brightness') this.updateBrightnessSlider(uid);
+          UI.toast('Failed to update');
+          console.error(err);
+        });
     };
 
     const onMove = (ev) => { lastVal = update(ev); };

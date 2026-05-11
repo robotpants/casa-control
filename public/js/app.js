@@ -29,34 +29,77 @@ const App = {
   },
 
   // ── Refresh accessory state ────────────────────────
+  // Polled every 30s. Two correctness rules:
+  // 1. PRESERVE optimistic writes. When the user just toggled a
+  //    device, State already holds the desired value. The server
+  //    may echo the OLD value for a few seconds (Lutron LEAP is
+  //    especially slow). Snapshot grace-window devices BEFORE
+  //    processAccessories overwrites State, then restore so the
+  //    poll can't yank the toggle back to the stale value.
+  // 2. NO FULL RE-RENDER. Re-rendering device cards (renderRoomContent /
+  //    renderDevicesView) destroys their DOM, which (a) flickers visibly
+  //    as a "page refresh" and (b) interrupts whatever the user is about
+  //    to tap next. Surgical _refreshInPlace handles every visible state
+  //    change. The trade-off: brand-new accessories don't appear until
+  //    the page is reloaded — acceptable for a rare event.
   async refresh() {
     try {
       const raw = await API.getAccessories();
+      const now = Date.now();
+
+      // Snapshot grace-window optimistic values BEFORE we overwrite
+      // State. Iterates Devices._recentToggles (uid → expiresAt).
+      const snapshots = {};
+      const toggles = Devices._recentToggles || {};
+      for (const uid in toggles) {
+        if ((toggles[uid] ?? 0) <= now) continue;
+        const acc = State.accessories.find(a => a.uniqueId === uid);
+        if (!acc) continue;
+        snapshots[uid] = (acc.serviceCharacteristics || []).map(c => ({
+          iid: c.iid, value: c.value,
+        }));
+      }
+
       State.accessories = State.processAccessories(raw);
 
-      // Don't tear down the DOM if the user is mid-interaction:
-      // a modal is open, a card is expanded, or a slider is being dragged.
-      // Update the dynamic bits in place instead so expand/slide state survives.
-      const modalOpen = document.getElementById('modalOverlay')?.classList.contains('open');
-      const cardExpanded = !!document.querySelector('.light-card.expanded');
-      const isSliding = this._isSliding;
-      if (modalOpen || cardExpanded || isSliding) {
-        this._refreshInPlace();
-      } else {
-        this.updateActiveView();
+      // Restore optimistic values into the freshly-rebuilt accessories.
+      // Without this, the next poll resurrects the device's prior state
+      // (Homebridge returned stale data → State now stale → next render
+      // flips the toggle back, undoing the user's action).
+      for (const uid in snapshots) {
+        const acc = State.accessories.find(a => a.uniqueId === uid);
+        if (!acc) continue;
+        for (const snap of snapshots[uid]) {
+          const ch = (acc.serviceCharacteristics || []).find(c => c.iid === snap.iid);
+          if (ch) ch.value = snap.value;
+        }
+      }
+
+      // Surgical updates only — never tear down device-card DOM here.
+      this._refreshInPlace();
+
+      // Off-card pieces that may need a refresh too. These re-render
+      // their own DOM containers; device cards are unaffected.
+      if (this.currentView === 'home') {
+        Rooms.render();
+        this.renderLowBatteryBanner();
+        this.renderFavorites();
+      } else if (this.currentView === 'room' && State.currentRoomId) {
+        Rooms.refreshHeader?.(State.currentRoomId);
       }
     } catch (e) {
       console.warn('Refresh failed:', e.message);
     }
   },
 
-  // ── Surgical update — toggle/indicator/status only ─
+  // ── Surgical update — toggle/indicator/status/slider ─
+  // Doesn't touch device-card structure; just patches the dynamic
+  // bits. Grace-window devices are skipped entirely so we never
+  // step on an in-flight optimistic update.
   _refreshInPlace() {
     const now = Date.now();
     for (const acc of State.accessories) {
       const uid = acc.uniqueId;
-      // Skip devices the user just toggled — the API may still report
-      // the old state for a few seconds after the write.
       if ((Devices._recentToggles?.[uid] ?? 0) > now) continue;
       const ind = document.getElementById(`ind-${uid}`);
       const tog = document.getElementById(`tog-${uid}`);
@@ -69,20 +112,9 @@ const App = {
       if (st)  st.innerHTML = isOffline
         ? '<span style="color:var(--danger)">Offline</span>'
         : UI.deviceStatus(acc);
-    }
-  },
-
-  // ── Update whichever view is active ───────────────
-  updateActiveView() {
-    if (this.currentView === 'home') {
-      Rooms.render();
-      this.renderLowBatteryBanner();
-      this.renderFavorites();
-    } else if (this.currentView === 'room' && State.currentRoomId) {
-      Rooms.renderRoomContent(State.currentRoomId);
-      Rooms.render();
-    } else if (this.currentView === 'devices') {
-      this.renderDevicesView();
+      // Brightness fill: nudges the slider when value changed
+      // externally (e.g., another client adjusted the bulb).
+      Devices.updateBrightnessSlider?.(uid);
     }
   },
 

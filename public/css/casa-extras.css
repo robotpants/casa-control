@@ -380,8 +380,13 @@ body { zoom: var(--ui-scale); }
 
 /* ── Edit Device button (inside expand panel) ──────── */
 /* Extra padding so the button's neumorphic shadow has room — the
-   parent .light-controls clips overflow during expand animation. */
-.light-card.expanded .light-controls { padding-bottom: 14px; padding-right: 4px; padding-left: 4px; }
+   parent .light-controls clips overflow during expand animation.
+   Override smartmorphic's 320px max-height — Hue color lights have
+   brightness + temp presets + hue presets + color wheel + debug info
+   + Edit Device button, which exceeds the cap and clips the button
+   off the bottom on mobile. 1000px fits any realistic single-card
+   content while keeping the expand transition. */
+.light-card.expanded .light-controls { max-height: 1000px; padding-bottom: 14px; padding-right: 4px; padding-left: 4px; }
 
 .device-edit-row {
   display: flex;

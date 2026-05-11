@@ -392,50 +392,77 @@ const Devices = {
     const targetState = !wasOn;
     const type = State.getType(accessory);
 
-    // Optimistic UI + grace window starts at click time
+    // Capture pre-toggle state so we can revert on failure.
+    const onChar = accessory.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
+    const brightChar = accessory.serviceCharacteristics.find(c => c.type === 'Brightness');
+    const speedChar = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
+    const wasBrightness = brightChar?.value ?? null;
+    const wasSpeed = speedChar?.value ?? null;
+
+    // ── Optimistic state update ──
+    // Set State first so updateStatus / updateBrightnessSlider / Rooms.render
+    // all read the new value. Before this, only the toggle/icon flipped
+    // instantly while status text + slider + room counts had to wait for
+    // the API roundtrip (1–3s on Lutron LEAP, longer on Hue).
+    if (onChar) State.updateCharValue(accessory.aid, onChar.iid, targetState ? 1 : 0);
+
+    // Dimmers (notably Lutron Caseta PD-6WCL): On=1 alone leaves
+    // Brightness at 0, so the light "turns on" at 0% and the slider
+    // sticks at 0. Bump to 100 on first On so the user sees light.
+    let willBumpBrightness = false;
+    if (targetState && type === 'light' && brightChar && (brightChar.value ?? 0) === 0) {
+      State.updateCharValue(accessory.aid, brightChar.iid, 100);
+      willBumpBrightness = true;
+    }
+
+    // Fans/purifiers: some plugins (Dreo) don't actually stop on
+    // Active=0 alone — also send RotationSpeed=0 in the background.
+    let willStopFan = false;
+    if (!targetState && (type === 'fan' || type === 'purifier') && speedChar && (speedChar.value ?? 0) > 0) {
+      State.updateCharValue(accessory.aid, speedChar.iid, 0);
+      willStopFan = true;
+    }
+
+    // Render everything from the optimistic state, immediately.
     this.updateIndicator(uniqueId, targetState);
+    this.updateStatus(uniqueId);
+    this.updateBrightnessSlider(uniqueId);
+    Rooms.render();
+    if (App.currentView === 'room' && State.currentRoomId) {
+      Rooms.refreshHeader?.(State.currentRoomId);
+    }
+
+    // Grace window blocks the next refresh poll from overwriting our
+    // optimistic value with stale data.
     this._recentToggles[uniqueId] = Date.now() + 10000;
 
+    // ── Fire the API call in the background ──
     API.setOnOff(accessory, targetState)
       .then(() => {
-        const char = accessory.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
-        if (char) State.updateCharValue(accessory.aid, char.iid, targetState ? 1 : 0);
-
-        // Fans/purifiers: some plugins (Dreo) don't actually stop on
-        // Active=0 alone — also send RotationSpeed=0.
-        if (!targetState && (type === 'fan' || type === 'purifier')) {
-          const speedChar = accessory.serviceCharacteristics.find(c => c.type === 'RotationSpeed');
-          if (speedChar && (speedChar.value ?? 0) > 0) {
-            API.setCharacteristic(uniqueId, 'RotationSpeed', 0)
-              .then(() => State.updateCharValue(accessory.aid, speedChar.iid, 0))
-              .catch(() => { /* secondary; ignore */ });
-          }
+        // Primary call succeeded — fire any secondary writes.
+        if (willBumpBrightness) {
+          API.setCharacteristic(uniqueId, 'Brightness', 100).catch(() => {
+            /* secondary; ignore */
+          });
         }
-
-        // Dimmers (notably Lutron Caseta PD-6WCL): On=1 alone leaves
-        // Brightness at 0, so the light "turns on" at 0% and the slider
-        // sticks at 0. Bump to 100 on first On so the user sees light.
-        if (targetState && type === 'light') {
-          const brightChar = accessory.serviceCharacteristics.find(c => c.type === 'Brightness');
-          if (brightChar && (brightChar.value ?? 0) === 0) {
-            State.updateCharValue(accessory.aid, brightChar.iid, 100);
-            API.setCharacteristic(uniqueId, 'Brightness', 100)
-              .catch(() => { /* secondary; ignore */ });
-          }
+        if (willStopFan) {
+          API.setCharacteristic(uniqueId, 'RotationSpeed', 0).catch(() => {
+            /* secondary; ignore */
+          });
         }
-
-        // Surgical refreshes: keeps the expanded card open and avoids
-        // a full re-render flicker. Rooms.render() handles the rooms
-        // list (counts on each room card).
-        this.updateBrightnessSlider(uniqueId);
+      })
+      .catch(e => {
+        // Revert State to pre-toggle, then re-render.
+        if (onChar) State.updateCharValue(accessory.aid, onChar.iid, wasOn ? 1 : 0);
+        if (willBumpBrightness && brightChar) State.updateCharValue(accessory.aid, brightChar.iid, wasBrightness);
+        if (willStopFan && speedChar) State.updateCharValue(accessory.aid, speedChar.iid, wasSpeed);
+        this.updateIndicator(uniqueId, wasOn);
         this.updateStatus(uniqueId);
+        this.updateBrightnessSlider(uniqueId);
         Rooms.render();
         if (App.currentView === 'room' && State.currentRoomId) {
           Rooms.refreshHeader?.(State.currentRoomId);
         }
-      })
-      .catch(e => {
-        this.updateIndicator(uniqueId, wasOn);
         // Clear the grace window so the next refresh poll can resync
         // the actual on-device state instead of holding our wrong
         // optimistic value for the full 10s.

@@ -472,8 +472,15 @@ const Devices = {
     // Dimmers (notably Lutron Caseta PD-6WCL): On=1 alone leaves
     // Brightness at 0, so the light "turns on" at 0% and the slider
     // sticks at 0. Bump to 100 on first On so the user sees light.
+    //
+    // Scoped to Lutron because the bump fires as a SECOND, sequential
+    // API call (after On=1 resolves). For Hue / most other plugins the
+    // bulb already remembers its last brightness, so the extra round-
+    // trip just doubles the perceived "turn on" delay for no benefit.
+    const mfg = (accessory.accessoryInformation?.Manufacturer || '').toLowerCase();
+    const needsBrightnessBump = mfg.includes('lutron');
     let willBumpBrightness = false;
-    if (targetState && type === 'light' && brightChar && (brightChar.value ?? 0) === 0) {
+    if (targetState && type === 'light' && needsBrightnessBump && brightChar && (brightChar.value ?? 0) === 0) {
       State.updateCharValue(accessory.aid, brightChar.iid, 100);
       willBumpBrightness = true;
     }

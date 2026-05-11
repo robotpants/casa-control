@@ -14,6 +14,9 @@
 - Wire into Casa Control rooms (it'll surface automatically once Homebridge sees it; typeMap already includes Thermostat)
 - **Full thermostat UI in Casa Control**: target-temp slider, heat/cool/off mode buttons, away/home toggle. Currently only shows on/off + temp readout via the generic light-card path.
 
+### Battery status page
+- **Dedicated page listing every battery-powered device with current level.** Sort by level ascending so worst-off floats to the top. Reuse `.status-pill.battery` variants (ok/warning/alert) for visual cue. Tap a row to open the device's manage modal. Surfaces low batteries proactively instead of relying on the home-view banner (which only shows the top 3 worst). Source data is already wired up — `State.getBattery(acc)` + `State.getLowBatteryDevices()` for the "needs attention" filter, plus a "show all" mode that includes healthy batteries.
+
 ### Scenes
 - **Scene support**: define + run scenes (e.g., "Movie Night" sets Living Room lights to 20% warm + turns off Office). Open questions: store locally in Casa Control (simple, no Homebridge dependency) vs. integrate with Homebridge scenes/automations (slower to set up but visible across Apple Home / other clients). Likely start local, expose as buttons on the home view.
 

@@ -225,7 +225,7 @@ const Rooms = {
     await Promise.allSettled(
       lights.map(a => API.setOnOff(a, targetState).then(() => {
         const char = a.serviceCharacteristics.find(c => c.type === 'On' || c.type === 'Active');
-        if (char) State.updateCharValue(a.aid, char.iid, targetState ? 1 : 0);
+        if (char) State.updateCharValue(a.uniqueId, char.iid, targetState ? 1 : 0);
       }))
     );
 

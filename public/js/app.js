@@ -96,22 +96,28 @@ const App = {
   // Doesn't touch device-card structure; just patches the dynamic
   // bits. Grace-window devices are skipped entirely so we never
   // step on an in-flight optimistic update.
+  //
+  // querySelectorAll-by-id (instead of getElementById) is intentional:
+  // cardHTML renders the same IDs in favorites, room view, and devices
+  // view, and they all share the DOM. Update every copy so the
+  // visible one always reflects current State.
   _refreshInPlace() {
     const now = Date.now();
     for (const acc of State.accessories) {
       const uid = acc.uniqueId;
       if ((Devices._recentToggles?.[uid] ?? 0) > now) continue;
-      const ind = document.getElementById(`ind-${uid}`);
-      const tog = document.getElementById(`tog-${uid}`);
-      const st  = document.getElementById(`st-${uid}`);
-      if (!ind && !tog && !st) continue;
+      const inds = document.querySelectorAll(`[id="ind-${uid}"]`);
+      const togs = document.querySelectorAll(`[id="tog-${uid}"]`);
+      const sts  = document.querySelectorAll(`[id="st-${uid}"]`);
+      if (!inds.length && !togs.length && !sts.length) continue;
       const isOn = State.isOn(acc);
       const isOffline = acc.instance?.connectionFailedCount > 0;
-      if (ind) ind.classList.toggle('on', isOn);
-      if (tog) tog.classList.toggle('on', isOn);
-      if (st)  st.innerHTML = isOffline
+      inds.forEach(el => el.classList.toggle('on', isOn));
+      togs.forEach(el => el.classList.toggle('on', isOn));
+      const stHTML = isOffline
         ? '<span style="color:var(--danger)">Offline</span>'
         : UI.deviceStatus(acc);
+      sts.forEach(el => { el.innerHTML = stHTML; });
       // Brightness fill: nudges the slider when value changed
       // externally (e.g., another client adjusted the bulb).
       Devices.updateBrightnessSlider?.(uid);

@@ -583,13 +583,23 @@ const State = {
   },
 
   // ── Update accessory value in local state ─────────
-  // Call this after a successful API write
-  updateCharValue(aid, iid, value) {
-    const acc = this.accessories.find(a => a.aid === aid);
+  // Call this after a successful API write — or optimistically right
+  // before firing one — to keep State in sync with the user's action.
+  //
+  // Lookup is by uniqueId, NOT by aid. aid alone is unsafe because the
+  // Lutron and Hue child bridges both start aid numbering at 2, so two
+  // entirely different devices can share aid=9. accessories.find(a =>
+  // a.aid === X) would return the first match (often the wrong device),
+  // mutate a char on it, and leave the intended device untouched. That
+  // shows up as toggles that "do nothing" — the optimistic write
+  // silently lands on a stranger and the next State.isOn read returns
+  // the unchanged value.
+  updateCharValue(uniqueId, iid, value) {
+    const acc = this.accessories.find(a => a.uniqueId === uniqueId);
     if (!acc) return;
     const char = (acc.serviceCharacteristics || []).find(c => c.iid === iid);
     if (char) char.value = value;
-    // Also update values map
+    // Also update values map (used by some helpers that key by type name)
     if (acc.values) {
       const key = char ? char.type : iid;
       acc.values[key] = value;

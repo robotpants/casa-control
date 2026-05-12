@@ -33,9 +33,15 @@ final class HomebridgeClient: ObservableObject {
         let updateAvailable: Bool
     }
 
-    @AppStorage("homebridge.host") var host: String = ""
-    @AppStorage("homebridge.port") var port: Int = 8581
-    @AppStorage("homebridge.useTLS") var useTLS: Bool = false
+    @Published var host: String {
+        didSet { UserDefaults.standard.set(host, forKey: "homebridge.host") }
+    }
+    @Published var port: Int {
+        didSet { UserDefaults.standard.set(port, forKey: "homebridge.port") }
+    }
+    @Published var useTLS: Bool {
+        didSet { UserDefaults.standard.set(useTLS, forKey: "homebridge.useTLS") }
+    }
 
     @Published private(set) var isAuthenticated: Bool = false
     @Published private(set) var status: ServerStatus?
@@ -51,6 +57,11 @@ final class HomebridgeClient: ObservableObject {
     private var pollTask: Task<Void, Never>?
 
     init() {
+        let defaults = UserDefaults.standard
+        self.host = defaults.string(forKey: "homebridge.host") ?? ""
+        let storedPort = defaults.integer(forKey: "homebridge.port")
+        self.port = storedPort == 0 ? 8581 : storedPort
+        self.useTLS = defaults.bool(forKey: "homebridge.useTLS")
         self.token = Keychain.get("homebridge.token")
         self.isAuthenticated = token != nil
     }

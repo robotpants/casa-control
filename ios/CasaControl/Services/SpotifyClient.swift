@@ -281,12 +281,13 @@ final class SpotifyClient: NSObject, ObservableObject {
 
 extension SpotifyClient: ASWebAuthenticationPresentationContextProviding {
     nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        // Use the key window — set on init from the main actor.
-        DispatchQueue.main.sync {
+        // ASWebAuthenticationSession invokes this on the main thread, so we
+        // can assume MainActor isolation rather than block-waiting on it.
+        MainActor.assumeIsolated {
             UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .flatMap { $0.windows }
-                .first(where: { $0.isKeyWindow }) ?? ASPresentationAnchor()
+                .first(where: { $0.isKeyWindow }) ?? UIWindow()
         }
     }
 }

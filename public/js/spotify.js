@@ -205,12 +205,18 @@ const Spotify = {
 
   _wire(root) {
     // Tapping the compact row (anywhere except the mini toggle) expands.
-    root.querySelector('.np-compact').addEventListener('click', e => {
-      if (e.target.closest('.np-mini-toggle')) return;
+    // Tapping the expanded row's art/info area collapses — the compact
+    // strip is hidden once expanded, so this is the only way back.
+    const toggleExpand = () => {
       this._expanded = !this._expanded;
       root.classList.toggle('expanded', this._expanded);
       if (this._expanded) this._refreshDevices();
+    };
+    root.querySelector('.np-compact').addEventListener('click', e => {
+      if (e.target.closest('.np-mini-toggle')) return;
+      toggleExpand();
     });
+    root.querySelector('.np-expanded-row').addEventListener('click', toggleExpand);
 
     root.querySelector('.np-mini-toggle').addEventListener('click', e => {
       e.stopPropagation();

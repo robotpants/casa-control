@@ -869,8 +869,13 @@ body { zoom: var(--ui-scale); }
 }
 
 /* ── Expanded body ──────────────────────────────────── */
-.np-expanded-body { display: none; padding-top: 14px; }
+.np-expanded-body { display: none; }
 .now-playing-widget.expanded .np-expanded-body { display: block; }
+/* When expanded, hide the compact strip — the expanded body has its
+   own (larger) art + title/artist, and showing both is duplicate
+   information. Tap the expanded row's art/title to collapse. */
+.now-playing-widget.expanded .np-compact { display: none; }
+.now-playing-widget.expanded .np-expanded-row { cursor: pointer; }
 
 .np-expanded-row {
   display: flex;
@@ -985,16 +990,16 @@ body { zoom: var(--ui-scale); }
 .np-play-big {
   width: 52px; height: 52px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--surface);
   border: none;
   padding: 0;
-  color: #fff;
-  box-shadow: 0 4px 12px var(--accent-glow), var(--neu-raised-sm);
+  color: var(--text-secondary);
+  box-shadow: var(--neu-raised-sm);
   cursor: pointer;
   position: relative;
-  transition: transform .1s;
+  transition: box-shadow .15s, transform .1s;
 }
-.np-play-big:active { transform: scale(.96); }
+.np-play-big:active { box-shadow: var(--neu-pressed-sm); transform: scale(.96); }
 .np-play-big::before {
   content: '';
   position: absolute;
@@ -1004,12 +1009,16 @@ body { zoom: var(--ui-scale); }
   border-width: 8px 0 8px 13px;
   border-color: transparent transparent transparent currentColor;
 }
+/* Pause-state: two bars centered on the button. Pseudo's box is 5px wide
+   and the box-shadow paints a sibling bar 8px to the right; that gives
+   a 13px-wide icon. translate(-130%, -50%) puts its center at the
+   parent's center (5px * 1.3 = 6.5px left = half of 13px). */
 .np-play-big.on::before {
   border: none;
   width: 5px; height: 16px;
   background: currentColor;
   box-shadow: 8px 0 0 currentColor;
-  transform: translate(-90%, -50%);
+  transform: translate(-130%, -50%);
   border-radius: 1px;
 }
 

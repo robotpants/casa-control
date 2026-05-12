@@ -9,8 +9,10 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const os = require('os');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const app = express();
@@ -19,6 +21,10 @@ const HB_HOST = process.env.HB_HOST || 'localhost';
 const HB_PORT = process.env.HB_PORT || 8581;
 const HB_USER = process.env.HB_USER || 'nick';
 const HB_PASS = process.env.HB_PASS || '';
+
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '';
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || '';
+const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI || 'http://homebridge.local:3000/api/spotify/callback';
 
 let token = null;
 let tokenExpiry = 0;
@@ -142,6 +148,234 @@ app.get('/api/pi-stats', (req, res) => {
 
   res.json(stats);
 });
+
+// ── Spotify Connect remote control ──────────────────
+// OAuth Authorization Code flow. Refresh token persists in a separate
+// file (spotify.json) so the frontend's prefs PUTs can't wipe it. The
+// access token is in-memory only and is refreshed lazily on 401.
+const SPOTIFY_FILE = path.join(PREFS_DIR, 'spotify.json');
+const SPOTIFY_SCOPES = [
+  'user-read-playback-state',
+  'user-modify-playback-state',
+  'user-read-currently-playing',
+].join(' ');
+
+let spotifyAccessToken = null;
+let spotifyAccessExpiry = 0;
+const spotifyAuthStates = new Map(); // state → expiresAt
+
+function spotifyConfigured() {
+  return !!(SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET);
+}
+
+function loadSpotifyStore() {
+  try {
+    if (!fs.existsSync(SPOTIFY_FILE)) return {};
+    return JSON.parse(fs.readFileSync(SPOTIFY_FILE, 'utf8'));
+  } catch (e) {
+    console.warn('spotify store read failed:', e.message);
+    return {};
+  }
+}
+
+function saveSpotifyStore(obj) {
+  if (!fs.existsSync(PREFS_DIR)) fs.mkdirSync(PREFS_DIR, { recursive: true });
+  const tmp = SPOTIFY_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2));
+  fs.renameSync(tmp, SPOTIFY_FILE);
+}
+
+// Generic HTTPS JSON request. Returns { status, body } where body is
+// parsed JSON when possible, otherwise the raw string.
+function httpsRequest(opts, payload, cb) {
+  const req = https.request(opts, res => {
+    let raw = '';
+    res.on('data', chunk => raw += chunk);
+    res.on('end', () => {
+      let body = raw;
+      if (raw) {
+        try { body = JSON.parse(raw); } catch (_) {}
+      }
+      cb(null, { status: res.statusCode, body });
+    });
+  });
+  req.on('error', cb);
+  if (payload) req.write(payload);
+  req.end();
+}
+
+// Exchange refresh_token for a fresh access_token. Updates the
+// in-memory cache and returns the access token via cb.
+function refreshSpotifyAccess(cb) {
+  const store = loadSpotifyStore();
+  if (!store.refreshToken) return cb(new Error('Not connected'));
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: store.refreshToken,
+  }).toString();
+  const basic = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64');
+  httpsRequest({
+    hostname: 'accounts.spotify.com',
+    path: '/api/token',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(body),
+      'Authorization': 'Basic ' + basic,
+    },
+  }, body, (err, resp) => {
+    if (err) return cb(err);
+    if (resp.status !== 200 || !resp.body.access_token) {
+      return cb(new Error('Spotify refresh failed: ' + JSON.stringify(resp.body)));
+    }
+    spotifyAccessToken = resp.body.access_token;
+    // 30s safety margin so we don't race a 401 right at the edge.
+    spotifyAccessExpiry = Date.now() + ((resp.body.expires_in || 3600) - 30) * 1000;
+    // Spotify sometimes rotates the refresh token; persist when it does.
+    if (resp.body.refresh_token && resp.body.refresh_token !== store.refreshToken) {
+      store.refreshToken = resp.body.refresh_token;
+      saveSpotifyStore(store);
+    }
+    cb(null, spotifyAccessToken);
+  });
+}
+
+function getSpotifyAccess(cb) {
+  if (spotifyAccessToken && Date.now() < spotifyAccessExpiry) {
+    return cb(null, spotifyAccessToken);
+  }
+  refreshSpotifyAccess(cb);
+}
+
+// Call api.spotify.com with auto-refresh on 401. cb(err, { status, body }).
+function spotifyApi(method, urlPath, payload, attempt, cb) {
+  if (typeof attempt === 'function') { cb = attempt; attempt = 0; }
+  getSpotifyAccess((err, accessToken) => {
+    if (err) return cb(err);
+    const data = payload ? (typeof payload === 'string' ? payload : JSON.stringify(payload)) : null;
+    httpsRequest({
+      hostname: 'api.spotify.com',
+      path: urlPath,
+      method,
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        ...(data ? {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data),
+        } : {}),
+      },
+    }, data, (err2, resp) => {
+      if (err2) return cb(err2);
+      if (resp.status === 401 && attempt === 0) {
+        spotifyAccessToken = null;
+        spotifyAccessExpiry = 0;
+        return spotifyApi(method, urlPath, payload, 1, cb);
+      }
+      cb(null, resp);
+    });
+  });
+}
+
+// GET /api/spotify/status → { configured, connected, displayName }
+app.get('/api/spotify/status', (req, res) => {
+  const store = loadSpotifyStore();
+  res.json({
+    configured: spotifyConfigured(),
+    connected: !!store.refreshToken,
+    displayName: store.displayName || null,
+  });
+});
+
+// GET /api/spotify/auth → redirect to Spotify consent screen
+app.get('/api/spotify/auth', (req, res) => {
+  if (!spotifyConfigured()) {
+    return res.status(500).send('Spotify client ID/secret not set in .env');
+  }
+  const state = crypto.randomBytes(16).toString('hex');
+  spotifyAuthStates.set(state, Date.now() + 10 * 60 * 1000);
+  // Sweep expired states opportunistically.
+  for (const [k, exp] of spotifyAuthStates) if (exp < Date.now()) spotifyAuthStates.delete(k);
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: SPOTIFY_CLIENT_ID,
+    scope: SPOTIFY_SCOPES,
+    redirect_uri: SPOTIFY_REDIRECT_URI,
+    state,
+  });
+  res.redirect('https://accounts.spotify.com/authorize?' + params.toString());
+});
+
+// GET /api/spotify/callback → exchange code for tokens, save, redirect home
+app.get('/api/spotify/callback', (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.status(400).send('Spotify auth error: ' + error);
+  if (!code || !state) return res.status(400).send('Missing code or state');
+  const exp = spotifyAuthStates.get(state);
+  if (!exp || exp < Date.now()) return res.status(400).send('Invalid or expired state');
+  spotifyAuthStates.delete(state);
+
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: SPOTIFY_REDIRECT_URI,
+  }).toString();
+  const basic = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64');
+  httpsRequest({
+    hostname: 'accounts.spotify.com',
+    path: '/api/token',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(body),
+      'Authorization': 'Basic ' + basic,
+    },
+  }, body, (err, resp) => {
+    if (err) return res.status(500).send('Token exchange failed: ' + err.message);
+    if (resp.status !== 200 || !resp.body.refresh_token) {
+      return res.status(500).send('Token exchange rejected: ' + JSON.stringify(resp.body));
+    }
+    const store = loadSpotifyStore();
+    store.refreshToken = resp.body.refresh_token;
+    saveSpotifyStore(store);
+    spotifyAccessToken = resp.body.access_token;
+    spotifyAccessExpiry = Date.now() + ((resp.body.expires_in || 3600) - 30) * 1000;
+    // Fetch display name once so the Settings UI can show "Connected as X".
+    spotifyApi('GET', '/v1/me', null, (e, r) => {
+      if (!e && r && r.status === 200 && r.body) {
+        const s = loadSpotifyStore();
+        s.displayName = r.body.display_name || r.body.id || null;
+        saveSpotifyStore(s);
+      }
+      res.redirect('/');
+    });
+  });
+});
+
+// GET /api/spotify/now-playing → passthrough of currently-playing
+app.get('/api/spotify/now-playing', (req, res) => {
+  const store = loadSpotifyStore();
+  if (!store.refreshToken) return res.status(204).end();
+  spotifyApi('GET', '/v1/me/player/currently-playing', null, (err, resp) => {
+    if (err) return res.status(500).json({ error: err.message });
+    // 204 = nothing playing. Forward as-is.
+    if (resp.status === 204) return res.status(204).end();
+    res.status(resp.status).json(resp.body);
+  });
+});
+
+function spotifyTransport(req, res, method, urlPath) {
+  const store = loadSpotifyStore();
+  if (!store.refreshToken) return res.status(401).json({ error: 'Not connected' });
+  spotifyApi(method, urlPath, null, (err, resp) => {
+    if (err) return res.status(500).json({ error: err.message });
+    // Spotify returns 204 No Content for transport commands on success.
+    if (resp.status >= 200 && resp.status < 300) return res.status(resp.status).end();
+    res.status(resp.status).json(resp.body || { error: 'Spotify error' });
+  });
+}
+
+app.put('/api/spotify/play',  (req, res) => spotifyTransport(req, res, 'PUT', '/v1/me/player/play'));
+app.put('/api/spotify/pause', (req, res) => spotifyTransport(req, res, 'PUT', '/v1/me/player/pause'));
 
 // ── Proxy all /api/* to Homebridge ──────────────────
 // Wraps each request in a single-shot retry: if Homebridge returns 401

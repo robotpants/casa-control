@@ -33,13 +33,106 @@ const Spotify = {
   _devices: [],
   _devicePickerOpen: false,
 
+  _statusCache: null,
+
   async init() {
     try {
       const status = await fetch('/api/spotify/status').then(r => r.json());
+      this._statusCache = status;
       this._connected = !!status.connected;
     } catch (e) { return; }
+    this._wrapSettingsView();
     if (!this._connected) { this._hide(); return; }
     this._poll();
+  },
+
+  // ── Settings tile (Connected services section) ─────
+  // Hooked in by wrapping App.renderSettingsView so app.js itself
+  // stays untouched. After App finishes painting Settings, we inject
+  // a "Services" section above the About card. Future services
+  // (Ecobee, etc.) can plug their own tiles into the same section.
+  _wrapSettingsView() {
+    if (typeof App === 'undefined' || !App.renderSettingsView) return;
+    if (App._spotifyWrapped) return;
+    const orig = App.renderSettingsView.bind(App);
+    App.renderSettingsView = (...args) => {
+      const out = orig(...args);
+      Spotify._renderSettingsCard();
+      return out;
+    };
+    App._spotifyWrapped = true;
+  },
+
+  async _renderSettingsCard() {
+    const content = document.getElementById('settingsContent');
+    if (!content) return;
+    // Avoid duplicating on rapid re-renders.
+    const existing = document.getElementById('servicesSection');
+    if (existing) existing.remove();
+
+    let status = this._statusCache;
+    try {
+      status = await fetch('/api/spotify/status').then(r => r.json());
+      this._statusCache = status;
+    } catch (e) { /* fall back to cache */ }
+    status = status || { connected: false, configured: false, displayName: null };
+
+    const dotColor   = status.connected ? 'var(--success)' : 'var(--text-muted)';
+    const statusText = status.connected
+      ? `Connected as <strong>${this._escape(status.displayName || '—')}</strong>`
+      : (status.configured ? 'Not connected' : 'Not configured');
+    const btn = status.connected
+      ? `<button class="modal-btn secondary" style="flex:0 0 auto;padding:8px 14px;max-width:120px" onclick="Spotify._disconnect()">Disconnect</button>`
+      : (status.configured
+          ? `<button class="modal-btn primary" style="flex:0 0 auto;padding:8px 14px;max-width:120px" onclick="Spotify._connect()">Connect</button>`
+          : '');
+    // Spotify wordmark glyph — green circle, no dependency on icons.js.
+    const spotifyIcon = `
+      <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="11" fill="#1db954"/>
+        <path fill="#fff" d="M17.5 16.3a.7.7 0 0 1-1 .25c-2.7-1.65-6.1-2.03-10.1-1.1a.7.7 0 1 1-.3-1.37c4.4-1 8.2-.57 11.2 1.25a.7.7 0 0 1 .2.97zm1.45-2.9a.88.88 0 0 1-1.2.3c-3.1-1.9-7.8-2.45-11.45-1.35a.88.88 0 1 1-.5-1.7c4.2-1.25 9.4-.65 12.95 1.55a.88.88 0 0 1 .2 1.2zm.13-3.05c-3.7-2.2-9.85-2.4-13.4-1.32a1.05 1.05 0 1 1-.6-2.02c4.1-1.25 10.9-1 15.15 1.5a1.05 1.05 0 1 1-1.15 1.83z"/>
+      </svg>`;
+
+    const section = document.createElement('div');
+    section.id = 'servicesSection';
+    section.innerHTML = `
+      <div class="section-label">Services</div>
+      <div class="settings-group">
+        <div class="settings-item neu-raised">
+          <div class="left">
+            <div class="s-icon" style="background:transparent;box-shadow:none">${spotifyIcon}</div>
+            <div>
+              <div class="s-label">Spotify</div>
+              <div class="s-sub">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dotColor};margin-right:6px;vertical-align:middle"></span>${statusText}
+              </div>
+            </div>
+          </div>
+          ${btn}
+        </div>
+      </div>
+    `;
+
+    // Insert before About if present; otherwise append.
+    const labels = content.querySelectorAll('.section-label');
+    const about = Array.from(labels).find(l => l.textContent.trim() === 'About');
+    if (about) content.insertBefore(section, about);
+    else content.appendChild(section);
+  },
+
+  _connect() {
+    window.location.href = '/api/spotify/auth';
+  },
+
+  async _disconnect() {
+    if (!confirm("Disconnect Spotify? You'll need to re-authorize next time.")) return;
+    try {
+      await fetch('/api/spotify/disconnect', { method: 'DELETE' });
+    } catch (e) { /* ignore */ }
+    this._connected = false;
+    this._statusCache = { connected: false, configured: true, displayName: null };
+    this._hide();
+    if (typeof App !== 'undefined' && App.renderSettingsView) App.renderSettingsView();
   },
 
   _scheduleNext(active) {

@@ -65,21 +65,62 @@ The three depth levels from the CSS spec are exposed as view modifiers:
 Plus components: `IconWell`, `SectionLabel`, `SceneChip`, `StatusPill`,
 `NeuSlider`, and `NeuToggleStyle` (apply with `.toggleStyle(NeuToggleStyle())`).
 
+## Spotify integration
+
+Pure Web API + OAuth PKCE — no `SpotifyiOS.framework` dependency. Playback
+control requires **Spotify Premium** with an active Connect device on the
+network; now-playing reads work on free accounts.
+
+1. Create an app at <https://developer.spotify.com/dashboard>.
+2. Add a redirect URI: `casacontrol://spotify-callback` (must match exactly).
+3. Open `ios/CasaControl/Services/SpotifyClient.swift` and set
+   `SpotifyConfig.clientID` to your client ID.
+4. In Xcode → Info tab → **URL Types** → add a new entry with URL Schemes =
+   `casacontrol`. (This is what lets the auth callback come back to the app.)
+5. Build & run, tap **Music** tab → **Sign in with Spotify**.
+
+## Homebridge admin
+
+Talks to `homebridge-config-ui-x`'s REST API (the universal admin UI plugin —
+default port 8581). No extra setup on the Pi if you already use that UI in a
+browser.
+
+1. Tap the **Bridge** tab → **Configure**.
+2. Enter the Pi's LAN IP/hostname + port (default 8581) + TLS toggle.
+3. Sign in with your Homebridge UI admin username/password (stored in
+   Keychain).
+4. The view shows server status (CPU/RAM/uptime), child bridges with restart
+   buttons, installed plugins (with update indicators), and a live tail of
+   recent logs.
+
+> Note: this is read/admin functionality only — actual device control still
+> goes through HomeKit. The Bridge tab is for "is everything healthy?" and
+> "restart the Hue child bridge" workflows.
+
 ## File layout
 
 ```
 ios/CasaControl/
   CasaControlApp.swift       app entry
   HomeStore.swift            HMHomeManager wrapper
+  Services/
+    Keychain.swift           generic password helper
+    SpotifyClient.swift      OAuth PKCE + Web API
+    HomebridgeClient.swift   config-ui-x REST client
   Theme/
     Theme.swift              tokens (colors, fonts, radii, spacing, shadows)
     Neumorphic.swift         raised/pressed modifiers + IconWell
     NeuToggleStyle.swift     custom Toggle style
     NeuSlider.swift          custom slider (accent/brightness/temp variants)
     Primitives.swift         SectionLabel, SceneChip, StatusPill
+    BottomNav.swift          bottom tab bar
   Views/
+    RootView.swift           tab container
     HomeView.swift           top-level (header + rooms)
     AccessoryRow.swift       light-card pattern with expandable brightness
+    MusicView.swift          Spotify connect + now-playing
+    HomebridgeView.swift     server admin (status, child bridges, plugins, logs)
+    SettingsView.swift       integrations + about
 ```
 
 ## Next steps (intentionally not built yet)

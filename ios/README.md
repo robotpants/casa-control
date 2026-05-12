@@ -6,6 +6,8 @@ Node/Homebridge stack: Homebridge keeps adapting non-HomeKit devices (Hue,
 Lutron, Ecobee, etc.); this app consumes them as normal `HMAccessory`s plus
 adds custom UI/features on top.
 
+> **New to Xcode?** Use [`SETUP.md`](./SETUP.md) instead — it's a beginner-focused step-by-step from "I have a Mac" to "the app runs on my iPhone." The terse version below assumes you've shipped an iOS app before.
+
 ## One-time setup on the Mac
 
 1. Open Xcode → File → New → Project → **iOS App**.

@@ -31,9 +31,14 @@ const API = {
   // Set a characteristic value on an accessory
   // uniqueId is the Homebridge accessory uniqueId (hex string)
   // charType is the characteristic type name (e.g. "On", "Brightness", "RotationSpeed")
-  // Throws on HTTP failure or echo mismatch (server flags _mismatch=true
-  // when the plugin acked but didn't apply the new value — most often the
-  // plugin is in a bad state and the user needs to know, not see a UI lie).
+  // Throws ONLY on HTTP failure. Echo mismatches (server got 200 but the
+  // response body still showed the OLD value) are logged but do not throw,
+  // because they're frequently false positives: plugins with lazy internal
+  // caches (homebridge-hue is the worst offender) respond before their
+  // own state catches up to the bulb. Treating those as failures was
+  // ping-ponging the toggle back to its pre-tap state right as the bulb
+  // was actually changing. If the write really did fail silently, the
+  // next 30s poll reconciles State with reality.
   async setCharacteristic(uniqueId, charType, value) {
     const res = await this._fetch(`/api/accessories/${uniqueId}`, {
       method: 'PUT',
@@ -46,9 +51,11 @@ const API = {
     if (!res.ok) throw new Error(`Failed to set characteristic ${charType} on ${uniqueId}`);
     const body = await res.json();
     if (body && body._mismatch) {
-      const err = new Error(`Plugin ignored ${charType}=${value} (echoed ${body._echoed})`);
-      err.mismatch = true;
-      throw err;
+      console.warn(
+        `[api] Echo mismatch on ${charType}=${value} ` +
+        `(echoed ${body._echoed}). Plugin cache likely stale; ` +
+        `keeping optimistic value, poll will reconcile.`
+      );
     }
     return body;
   },

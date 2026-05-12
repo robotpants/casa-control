@@ -310,8 +310,8 @@ const Devices = {
     // Drop saturation FIRST in State — Hue bulbs ignore ColorTemperature
     // while in color mode (saturation > 0), so the API call below sends
     // Saturation=0 before the temp change.
-    if (needsSatDrop) State.updateCharValue(acc.aid, sChar.iid, 0);
-    State.updateCharValue(acc.aid, tChar.iid, mireds);
+    if (needsSatDrop) State.updateCharValue(acc.uniqueId, sChar.iid, 0);
+    State.updateCharValue(acc.uniqueId, tChar.iid, mireds);
     this._highlightPreset(uid, p);
     const knob = document.getElementById(`knob-${uid}-temp`);
     const valEl = document.getElementById(`val-${uid}-temp`);
@@ -327,8 +327,8 @@ const Devices = {
 
     send.catch(e => {
       // Revert State
-      State.updateCharValue(acc.aid, tChar.iid, wasMireds);
-      if (needsSatDrop) State.updateCharValue(acc.aid, sChar.iid, wasSat);
+      State.updateCharValue(acc.uniqueId, tChar.iid, wasMireds);
+      if (needsSatDrop) State.updateCharValue(acc.uniqueId, sChar.iid, wasSat);
       // Revert DOM
       if (knob && wasMireds != null) {
         knob.style.left = ((wasMireds - minM) / (maxM - minM)) * 100 + '%';
@@ -357,8 +357,8 @@ const Devices = {
     const wasSat = sChar?.value ?? null;
 
     // ── Optimistic state + DOM ──
-    State.updateCharValue(acc.aid, hChar.iid, p.hue);
-    if (sChar) State.updateCharValue(acc.aid, sChar.iid, p.sat);
+    State.updateCharValue(acc.uniqueId, hChar.iid, p.hue);
+    if (sChar) State.updateCharValue(acc.uniqueId, sChar.iid, p.sat);
     this._highlightPreset(uid, p);
     const knob = document.getElementById(`knob-${uid}-hue`);
     const valEl = document.getElementById(`val-${uid}-hue`);
@@ -376,8 +376,8 @@ const Devices = {
       })
       .catch(e => {
         // Revert State
-        State.updateCharValue(acc.aid, hChar.iid, wasHue);
-        if (sChar) State.updateCharValue(acc.aid, sChar.iid, wasSat);
+        State.updateCharValue(acc.uniqueId, hChar.iid, wasHue);
+        if (sChar) State.updateCharValue(acc.uniqueId, sChar.iid, wasSat);
         // Revert DOM
         if (knob && wasHue != null) knob.style.left = (wasHue / 360) * 100 + '%';
         if (valEl && wasHue != null) valEl.textContent = Math.round(wasHue) + '°';
@@ -467,7 +467,7 @@ const Devices = {
     // all read the new value. Before this, only the toggle/icon flipped
     // instantly while status text + slider + room counts had to wait for
     // the API roundtrip (1–3s on Lutron LEAP, longer on Hue).
-    if (onChar) State.updateCharValue(accessory.aid, onChar.iid, targetState ? 1 : 0);
+    if (onChar) State.updateCharValue(accessory.uniqueId, onChar.iid, targetState ? 1 : 0);
 
     // Dimmers (notably Lutron Caseta PD-6WCL): On=1 alone leaves
     // Brightness at 0, so the light "turns on" at 0% and the slider
@@ -481,7 +481,7 @@ const Devices = {
     const needsBrightnessBump = mfg.includes('lutron');
     let willBumpBrightness = false;
     if (targetState && type === 'light' && needsBrightnessBump && brightChar && (brightChar.value ?? 0) === 0) {
-      State.updateCharValue(accessory.aid, brightChar.iid, 100);
+      State.updateCharValue(accessory.uniqueId, brightChar.iid, 100);
       willBumpBrightness = true;
     }
 
@@ -489,7 +489,7 @@ const Devices = {
     // Active=0 alone — also send RotationSpeed=0 in the background.
     let willStopFan = false;
     if (!targetState && (type === 'fan' || type === 'purifier') && speedChar && (speedChar.value ?? 0) > 0) {
-      State.updateCharValue(accessory.aid, speedChar.iid, 0);
+      State.updateCharValue(accessory.uniqueId, speedChar.iid, 0);
       willStopFan = true;
     }
 
@@ -523,9 +523,9 @@ const Devices = {
       })
       .catch(e => {
         // Revert State to pre-toggle, then re-render.
-        if (onChar) State.updateCharValue(accessory.aid, onChar.iid, wasOn ? 1 : 0);
-        if (willBumpBrightness && brightChar) State.updateCharValue(accessory.aid, brightChar.iid, wasBrightness);
-        if (willStopFan && speedChar) State.updateCharValue(accessory.aid, speedChar.iid, wasSpeed);
+        if (onChar) State.updateCharValue(accessory.uniqueId, onChar.iid, wasOn ? 1 : 0);
+        if (willBumpBrightness && brightChar) State.updateCharValue(accessory.uniqueId, brightChar.iid, wasBrightness);
+        if (willStopFan && speedChar) State.updateCharValue(accessory.uniqueId, speedChar.iid, wasSpeed);
         this.updateIndicator(uniqueId, wasOn);
         this.updateStatus(uniqueId);
         this.updateBrightnessSlider(uniqueId);
@@ -609,7 +609,7 @@ const Devices = {
       // State.updateCharValue first so updateStatus / updateBrightnessSlider
       // / Rooms.render read the new value. Slider DOM is already correct
       // from the drag. Status text (e.g. "75%") needs an explicit nudge.
-      State.updateCharValue(aid, iid, lastVal);
+      State.updateCharValue(uid, iid, lastVal);
 
       // Force Saturation to 100 when adjusting hue so the color is visible
       // (Hue bulbs left in low-sat color mode look washed out).
@@ -620,7 +620,7 @@ const Devices = {
         if (sChar && sChar.value !== 100) {
           satForceChar = sChar;
           satForceWas = sChar.value;
-          State.updateCharValue(aid, sChar.iid, 100);
+          State.updateCharValue(uid, sChar.iid, 100);
         }
       }
 
@@ -639,10 +639,10 @@ const Devices = {
         .catch(err => {
           // Revert State + DOM
           if (wasValue != null) {
-            State.updateCharValue(aid, iid, wasValue);
+            State.updateCharValue(uid, iid, wasValue);
             applyVisual(wasValue);
           }
-          if (satForceChar) State.updateCharValue(aid, satForceChar.iid, satForceWas);
+          if (satForceChar) State.updateCharValue(uid, satForceChar.iid, satForceWas);
           this.updateStatus(uid);
           if (prop === 'brightness') this.updateBrightnessSlider(uid);
           UI.toast('Failed to update');

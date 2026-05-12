@@ -831,18 +831,26 @@ const Devices = {
   },
 
   // ── Surgical DOM updates ───────────────────────────
+  // NOTE: Devices.cardHTML is rendered in three places (favorites on
+  // home view, room view's lightList, devices view's grid) with the
+  // SAME element IDs. The hidden views stay in the DOM, so any given
+  // `id` may match multiple elements. We deliberately use
+  // querySelectorAll on `[id="..."]` here so we update every copy —
+  // otherwise getElementById returns the first match (usually the
+  // hidden favorite) and the visible toggle the user tapped never
+  // flips. Yes, duplicate IDs is invalid HTML — TODO is to rework
+  // cardHTML to take a scope/prefix, but updating-all is the safe
+  // fix today and is also correct after the cleanup.
   updateIndicator(uniqueId, isOn) {
-    const ind = document.getElementById(`ind-${uniqueId}`);
-    const tog = document.getElementById(`tog-${uniqueId}`);
-    if (ind) ind.classList.toggle('on', isOn);
-    if (tog) tog.classList.toggle('on', isOn);
+    document.querySelectorAll(`[id="ind-${uniqueId}"]`).forEach(el => el.classList.toggle('on', isOn));
+    document.querySelectorAll(`[id="tog-${uniqueId}"]`).forEach(el => el.classList.toggle('on', isOn));
   },
 
   updateStatus(uniqueId) {
     const accessory = State.getAccessory(uniqueId);
     if (!accessory) return;
-    const st = document.getElementById(`st-${uniqueId}`);
-    if (st) st.textContent = UI.deviceStatus(accessory);
+    const text = UI.deviceStatus(accessory);
+    document.querySelectorAll(`[id="st-${uniqueId}"]`).forEach(el => { el.textContent = text; });
   },
 
   // Reflect on/off + current brightness in the slider DOM. cardHTML
@@ -855,10 +863,10 @@ const Devices = {
     const brightness = State.getCharValue(acc, 'Brightness');
     if (brightness == null) return;
     const display = State.isOn(acc) ? brightness : 0;
-    const fill = document.getElementById(`fill-${uniqueId}-brightness`);
-    const val = document.getElementById(`val-${uniqueId}-brightness`);
-    if (fill) fill.style.width = display + '%';
-    if (val) val.textContent = Math.round(display) + '%';
+    const widthPct = display + '%';
+    const textPct = Math.round(display) + '%';
+    document.querySelectorAll(`[id="fill-${uniqueId}-brightness"]`).forEach(el => { el.style.width = widthPct; });
+    document.querySelectorAll(`[id="val-${uniqueId}-brightness"]`).forEach(el => { el.textContent = textPct; });
   },
 
 };

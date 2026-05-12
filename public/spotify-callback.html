@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Casa Control · Spotify Callback</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: #e2e4ec;
+    color: #2a2d3a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 24px;
+    text-align: center;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  p  { font-size: 14px; color: #555; max-width: 420px; line-height: 1.5; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: rgba(0,0,0,.06); padding: 2px 6px; border-radius: 4px; }
+  .err { color: #c0392b; }
+  a { color: #e8653a; }
+</style>
+</head>
+<body>
+<h1 id="title">Connecting to Casa Control…</h1>
+<p id="msg">Forwarding Spotify authorization to your home dashboard.</p>
+
+<script>
+  // This page is hit by Spotify after the user approves the OAuth consent.
+  // It exists only because Spotify rejects non-HTTPS redirect URIs, and the
+  // Pi serves over plain HTTP on the LAN. Vercel's HTTPS satisfies Spotify;
+  // we then bounce the browser to the Pi to complete the token exchange.
+  //
+  // The bounce keeps the user's browser as the hop — no server-to-server
+  // call from Vercel to the Pi is needed (and wouldn't work anyway, since
+  // homebridge.local isn't reachable from Vercel's edge).
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    const code  = params.get('code');
+    const state = params.get('state');
+    const error = params.get('error');
+
+    const title = document.getElementById('title');
+    const msg   = document.getElementById('msg');
+
+    if (error) {
+      title.textContent = 'Spotify authorization failed';
+      title.classList.add('err');
+      msg.innerHTML = 'Spotify returned: <code>' + error + '</code>. Close this tab and try again from Casa Control.';
+      return;
+    }
+
+    if (!code || !state) {
+      title.textContent = 'Missing authorization data';
+      title.classList.add('err');
+      msg.textContent = 'No code or state in the callback URL. This page is only reached as part of the Spotify OAuth flow.';
+      return;
+    }
+
+    // Hand the code off to the Pi. homebridge.local is the standard
+    // Casa Control deploy target; override via ?host=… if your Pi
+    // answers on a different hostname.
+    const host = params.get('host') || 'homebridge.local:3000';
+    const dest = 'http://' + host + '/api/spotify/callback'
+               + '?code=' + encodeURIComponent(code)
+               + '&state=' + encodeURIComponent(state);
+    window.location.replace(dest);
+  })();
+</script>
+</body>
+</html>

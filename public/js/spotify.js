@@ -160,3 +160,12 @@ const Spotify = {
   },
 
 };
+
+// Self-bootstrap. spotify.js has no dependency on State — it only talks
+// to /api/spotify/* — so it can init as soon as the DOM is parsed,
+// independent of App.init()'s Homebridge handshake.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => Spotify.init());
+} else {
+  Spotify.init();
+}

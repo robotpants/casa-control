@@ -363,10 +363,10 @@ app.get('/api/spotify/now-playing', (req, res) => {
   });
 });
 
-function spotifyTransport(req, res, method, urlPath) {
+function spotifyTransport(req, res, method, urlPath, payload) {
   const store = loadSpotifyStore();
   if (!store.refreshToken) return res.status(401).json({ error: 'Not connected' });
-  spotifyApi(method, urlPath, null, (err, resp) => {
+  spotifyApi(method, urlPath, payload || null, (err, resp) => {
     if (err) return res.status(500).json({ error: err.message });
     // Spotify returns 204 No Content for transport commands on success.
     if (resp.status >= 200 && resp.status < 300) return res.status(resp.status).end();
@@ -374,8 +374,49 @@ function spotifyTransport(req, res, method, urlPath) {
   });
 }
 
-app.put('/api/spotify/play',  (req, res) => spotifyTransport(req, res, 'PUT', '/v1/me/player/play'));
-app.put('/api/spotify/pause', (req, res) => spotifyTransport(req, res, 'PUT', '/v1/me/player/pause'));
+app.put('/api/spotify/play',     (req, res) => spotifyTransport(req, res, 'PUT',  '/v1/me/player/play'));
+app.put('/api/spotify/pause',    (req, res) => spotifyTransport(req, res, 'PUT',  '/v1/me/player/pause'));
+app.post('/api/spotify/next',    (req, res) => spotifyTransport(req, res, 'POST', '/v1/me/player/next'));
+app.post('/api/spotify/previous',(req, res) => spotifyTransport(req, res, 'POST', '/v1/me/player/previous'));
+
+// PUT /api/spotify/volume?volume_percent=N
+app.put('/api/spotify/volume', (req, res) => {
+  const v = parseInt(req.query.volume_percent, 10);
+  if (isNaN(v) || v < 0 || v > 100) return res.status(400).json({ error: 'volume_percent 0-100 required' });
+  spotifyTransport(req, res, 'PUT', `/v1/me/player/volume?volume_percent=${v}`);
+});
+
+// GET /api/spotify/devices → list of available Connect devices
+app.get('/api/spotify/devices', (req, res) => {
+  const store = loadSpotifyStore();
+  if (!store.refreshToken) return res.status(401).json({ error: 'Not connected' });
+  spotifyApi('GET', '/v1/me/player/devices', null, (err, resp) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(resp.status).json(resp.body || { devices: [] });
+  });
+});
+
+// PUT /api/spotify/transfer — body { device_id, play? }
+// Moves playback to a specific Connect device. Spotify wants this
+// shape: { device_ids: ['…'], play: true }.
+app.put('/api/spotify/transfer', (req, res) => {
+  const id = req.body?.device_id;
+  if (!id) return res.status(400).json({ error: 'device_id required' });
+  const body = { device_ids: [id], play: req.body?.play !== false };
+  spotifyTransport(req, res, 'PUT', '/v1/me/player', body);
+});
+
+// DELETE /api/spotify/disconnect → clear stored refresh token
+app.delete('/api/spotify/disconnect', (req, res) => {
+  try {
+    if (fs.existsSync(SPOTIFY_FILE)) fs.unlinkSync(SPOTIFY_FILE);
+    spotifyAccessToken = null;
+    spotifyAccessExpiry = 0;
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── Proxy all /api/* to Homebridge ──────────────────
 // Wraps each request in a single-shot retry: if Homebridge returns 401

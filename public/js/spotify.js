@@ -1,39 +1,44 @@
 /* ── Casa Control · spotify.js ────────────────────────
    Spotify Connect remote control. Polls /api/spotify/now-playing
-   and renders a compact card between greeting and room grid.
-   Hidden when nothing is playing or when the user hasn't
-   connected an account yet.
+   and renders a card between greeting and room grid: compact by
+   default, expandable on tap for transport / volume / device picker.
 
-   v1 scope (Phase 1): compact card only — art, title, artist,
-   play/pause toggle. Expanded view, progress, prev/next, volume,
-   and device picker come in Phase 2.
+   Polls slow (30s) when idle, fast (5s) when something's playing.
+   Between polls, progress is interpolated locally so the bar
+   advances smoothly without hammering the server.
+
+   Hidden when nothing's playing or before the user has connected.
    ───────────────────────────────────────────────────── */
 
 const Spotify = {
 
-  // Polling cadence: faster when something's playing (so the UI
-  // catches track changes promptly), slower otherwise.
   POLL_ACTIVE_MS: 5000,
   POLL_IDLE_MS: 30000,
 
   _timer: null,
+  _tickTimer: null,         // 1s progress-bar tick
   _connected: false,
-  _lastTrackId: null,
+  _expanded: false,
   _isPlaying: false,
   _pendingTransport: false,
+  _pendingVolume: false,    // ignore poll-driven volume updates during drag
+
+  // Last server snapshot — needed to interpolate progress.
+  _progressMs: 0,
+  _durationMs: 0,
+  _progressAt: 0,           // Date.now() when _progressMs was captured
+
+  _volume: 0,
+  _deviceName: '',
+  _devices: [],
+  _devicePickerOpen: false,
 
   async init() {
     try {
       const status = await fetch('/api/spotify/status').then(r => r.json());
       this._connected = !!status.connected;
-    } catch (e) {
-      // Server unreachable or endpoint missing — leave widget hidden.
-      return;
-    }
-    if (!this._connected) {
-      this._hide();
-      return;
-    }
+    } catch (e) { return; }
+    if (!this._connected) { this._hide(); return; }
     this._poll();
   },
 
@@ -50,59 +55,94 @@ const Spotify = {
       if (res.status === 204) {
         this._hide();
       } else if (res.ok) {
-        const data = await res.json();
-        active = this._render(data);
+        active = this._render(await res.json());
       } else {
         this._hide();
       }
-    } catch (e) {
-      // Network blip — try again next tick, leave the card alone so a
-      // momentary failure doesn't flicker the UI off.
-    }
+    } catch (e) { /* network blip — keep card */ }
     this._scheduleNext(active);
   },
 
-  // Returns true when something is actively playing (drives poll cadence).
+  // Returns true if something is actively playing.
   _render(data) {
     if (!data || !data.item) { this._hide(); return false; }
-    const item = data.item;
-    const title = item.name || '';
+    const item   = data.item;
+    const title  = item.name || '';
     const artist = (item.artists || []).map(a => a.name).join(', ');
-    const album = item.album?.name || '';
-    const art = (item.album?.images || []).slice().sort((a, b) => (a.width || 0) - (b.width || 0));
-    // Smallest image >= 64px, else fall back to the last available.
-    const artUrl = (art.find(i => (i.width || 0) >= 64) || art[art.length - 1])?.url || '';
+    const album  = item.album?.name || '';
+    const art    = (item.album?.images || []).slice().sort((a, b) => (a.width || 0) - (b.width || 0));
+    // For the compact view, pick smallest >= 64px; for expanded we want
+    // a larger image — use whichever is closest to 200px.
+    const artSmall = (art.find(i => (i.width || 0) >= 64) || art[art.length - 1])?.url || '';
+    const artLarge = (art.find(i => (i.width || 0) >= 200) || art[art.length - 1])?.url || '';
     const isPlaying = !!data.is_playing;
     this._isPlaying = isPlaying;
-    this._lastTrackId = item.id || null;
+    this._progressMs = data.progress_ms || 0;
+    this._durationMs = item.duration_ms || 0;
+    this._progressAt = Date.now();
+    if (data.device) {
+      this._deviceName = data.device.name || '';
+      // Don't clobber a volume the user is dragging right now.
+      if (!this._pendingVolume && typeof data.device.volume_percent === 'number') {
+        this._volume = data.device.volume_percent;
+      }
+    }
 
     const root = this._ensureCard();
-    const artEl = root.querySelector('.np-art');
-    if (artUrl) {
-      artEl.style.backgroundImage = `url("${artUrl}")`;
-      artEl.classList.add('has-art');
-    } else {
-      artEl.style.backgroundImage = '';
-      artEl.classList.remove('has-art');
-    }
+    root.style.display = '';
+    root.classList.toggle('expanded', this._expanded);
+
+    // Compact + expanded both have .np-source — update every copy so
+    // expanding doesn't reveal stale text. .np-track-lg / .np-artist-lg
+    // mirror the compact title/artist in larger type.
+    const sourceText = this._deviceName ? `Spotify · ${this._deviceName}` : 'Spotify';
+    const artistText = album ? `${artist} · ${album}` : artist;
+    root.querySelectorAll('.np-source').forEach(el => el.textContent = sourceText);
     root.querySelector('.np-track').textContent = title;
-    root.querySelector('.np-artist').textContent = album ? `${artist} · ${album}` : artist;
+    root.querySelector('.np-artist').textContent = artistText;
+    const trackLg  = root.querySelector('.np-track-lg');
+    const artistLg = root.querySelector('.np-artist-lg');
+    if (trackLg)  trackLg.textContent  = title;
+    if (artistLg) artistLg.textContent = artistText;
+
+    this._paintArt(root.querySelector('.np-art'),    artSmall);
+    this._paintArt(root.querySelector('.np-art-lg'), artLarge || artSmall);
 
     const toggle = root.querySelector('.np-mini-toggle');
     toggle.classList.toggle('on', isPlaying);
     toggle.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+    const big = root.querySelector('.np-play-big');
+    if (big) {
+      big.classList.toggle('on', isPlaying);
+      big.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+    }
 
-    root.style.display = '';
+    this._paintProgress();
+    this._paintVolume();
+    this._startTicker();
     return isPlaying;
+  },
+
+  _paintArt(el, url) {
+    if (!el) return;
+    if (url) {
+      el.style.backgroundImage = `url("${url}")`;
+      el.classList.add('has-art');
+    } else {
+      el.style.backgroundImage = '';
+      el.classList.remove('has-art');
+    }
   },
 
   _hide() {
     const root = document.getElementById('nowPlaying');
     if (root) root.style.display = 'none';
+    this._expanded = false;
+    clearInterval(this._tickTimer);
+    this._tickTimer = null;
   },
 
-  // Build the card on first use. DOM-injected (rather than living in
-  // index.html) so the markup ships with the module that owns it.
+  // ── DOM construction ──────────────────────────────────
   _ensureCard() {
     let root = document.getElementById('nowPlaying');
     if (root) return root;
@@ -113,57 +153,274 @@ const Spotify = {
     root.className = 'now-playing-widget';
     root.style.display = 'none';
     root.innerHTML = `
-      <div class="np-art"></div>
-      <div class="np-info">
-        <div class="np-source">Spotify</div>
-        <div class="np-track"></div>
-        <div class="np-artist"></div>
+      <!-- compact row -->
+      <div class="np-compact">
+        <div class="np-art"></div>
+        <div class="np-info">
+          <div class="np-source">Spotify</div>
+          <div class="np-track"></div>
+          <div class="np-artist"></div>
+        </div>
+        <button class="np-mini-toggle" type="button" aria-label="Play"></button>
       </div>
-      <button class="np-mini-toggle" type="button" aria-label="Play"></button>
-    `;
-    // Insert above the status row so it sits between greeting and rooms.
-    host.insertBefore(root, host.firstChild);
 
-    root.querySelector('.np-mini-toggle').addEventListener('click', e => {
-      e.stopPropagation();
-      this._toggle();
-    });
+      <!-- expanded body, shown via .expanded class -->
+      <div class="np-expanded-body">
+        <div class="np-expanded-row">
+          <div class="np-art-lg"></div>
+          <div class="np-info">
+            <div class="np-source"></div>
+            <div class="np-track-lg"></div>
+            <div class="np-artist-lg"></div>
+          </div>
+        </div>
+        <div class="np-progress"><div class="np-progress-fill"></div></div>
+        <div class="np-progress-times">
+          <span class="np-pos">0:00</span>
+          <span class="np-dur">0:00</span>
+        </div>
+        <div class="np-transport-row">
+          <button class="np-transport-btn np-prev" type="button" aria-label="Previous"></button>
+          <button class="np-play-big" type="button" aria-label="Play"></button>
+          <button class="np-transport-btn np-next" type="button" aria-label="Next"></button>
+        </div>
+        <div class="np-volume-row">
+          <span class="np-vol-icon"></span>
+          <div class="np-vol-track"><div class="np-vol-fill"></div></div>
+          <span class="np-vol-value">--%</span>
+        </div>
+        <div class="np-device-row">
+          <button class="np-device-btn" type="button">
+            <span class="np-device-label">Playing on —</span>
+            <span class="np-device-chev">▾</span>
+          </button>
+          <div class="np-device-list" style="display:none"></div>
+        </div>
+      </div>
+    `;
+    host.insertBefore(root, host.firstChild);
+    this._wire(root);
     return root;
   },
 
-  async _toggle() {
+  _wire(root) {
+    // Tapping the compact row (anywhere except the mini toggle) expands.
+    root.querySelector('.np-compact').addEventListener('click', e => {
+      if (e.target.closest('.np-mini-toggle')) return;
+      this._expanded = !this._expanded;
+      root.classList.toggle('expanded', this._expanded);
+      if (this._expanded) this._refreshDevices();
+    });
+
+    root.querySelector('.np-mini-toggle').addEventListener('click', e => {
+      e.stopPropagation();
+      this._togglePlay();
+    });
+    root.querySelector('.np-play-big').addEventListener('click', e => {
+      e.stopPropagation();
+      this._togglePlay();
+    });
+    root.querySelector('.np-prev').addEventListener('click', e => {
+      e.stopPropagation();
+      this._transport('previous', 'POST');
+    });
+    root.querySelector('.np-next').addEventListener('click', e => {
+      e.stopPropagation();
+      this._transport('next', 'POST');
+    });
+
+    // Volume drag — pointer events handle mouse + touch uniformly.
+    const vTrack = root.querySelector('.np-vol-track');
+    const onDown = e => {
+      e.preventDefault();
+      this._pendingVolume = true;
+      const onMove = ev => this._dragVolume(vTrack, ev);
+      const onUp = ev => {
+        this._dragVolume(vTrack, ev);
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        this._commitVolume();
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      this._dragVolume(vTrack, e);
+    };
+    vTrack.addEventListener('pointerdown', onDown);
+
+    // Device picker toggle + delegated row clicks.
+    root.querySelector('.np-device-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      this._devicePickerOpen = !this._devicePickerOpen;
+      root.querySelector('.np-device-list').style.display =
+        this._devicePickerOpen ? '' : 'none';
+      if (this._devicePickerOpen) this._refreshDevices();
+    });
+    root.querySelector('.np-device-list').addEventListener('click', e => {
+      const row = e.target.closest('.np-device-row-item');
+      if (!row) return;
+      this._transferTo(row.dataset.id);
+    });
+  },
+
+  // ── Progress bar interpolation ──────────────────────
+  _startTicker() {
+    if (this._tickTimer) return;
+    this._tickTimer = setInterval(() => this._paintProgress(), 1000);
+  },
+
+  _paintProgress() {
+    const root = document.getElementById('nowPlaying');
+    if (!root) return;
+    let pos = this._progressMs;
+    if (this._isPlaying) pos += (Date.now() - this._progressAt);
+    if (pos > this._durationMs) pos = this._durationMs;
+    const pct = this._durationMs > 0 ? (pos / this._durationMs) * 100 : 0;
+    const fill = root.querySelector('.np-progress-fill');
+    if (fill) fill.style.width = pct + '%';
+    const posEl = root.querySelector('.np-pos');
+    const durEl = root.querySelector('.np-dur');
+    if (posEl) posEl.textContent = this._fmtMs(pos);
+    if (durEl) durEl.textContent = this._fmtMs(this._durationMs);
+  },
+
+  _fmtMs(ms) {
+    if (!ms || ms < 0) return '0:00';
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return `${m}:${(s % 60).toString().padStart(2, '0')}`;
+  },
+
+  // ── Transport actions ───────────────────────────────
+  async _togglePlay() {
     if (this._pendingTransport) return;
     this._pendingTransport = true;
-    // Optimistic flip — match the rest of Casa Control's pattern.
     const next = !this._isPlaying;
     this._isPlaying = next;
-    const toggle = document.querySelector('#nowPlaying .np-mini-toggle');
-    if (toggle) toggle.classList.toggle('on', next);
+    if (next) this._progressAt = Date.now(); // restart interpolation clock
+    this._paintToggles(next);
     try {
       const res = await fetch(next ? '/api/spotify/play' : '/api/spotify/pause', { method: 'PUT' });
-      if (!res.ok && res.status !== 204) {
-        // Revert on real failure.
-        this._isPlaying = !next;
-        if (toggle) toggle.classList.toggle('on', !next);
-        console.warn('Spotify transport failed:', res.status);
-      }
+      if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
     } catch (e) {
       this._isPlaying = !next;
-      if (toggle) toggle.classList.toggle('on', !next);
-      console.warn('Spotify transport error:', e.message);
+      this._paintToggles(!next);
+      console.warn('Spotify transport failed:', e.message);
     } finally {
       this._pendingTransport = false;
-      // Re-poll soon to converge on the real state.
       clearTimeout(this._timer);
-      this._timer = setTimeout(() => this._poll(), 800);
+      this._timer = setTimeout(() => this._poll(), 600);
     }
+  },
+
+  _paintToggles(isPlaying) {
+    const root = document.getElementById('nowPlaying');
+    if (!root) return;
+    root.querySelector('.np-mini-toggle').classList.toggle('on', isPlaying);
+    const big = root.querySelector('.np-play-big');
+    if (big) big.classList.toggle('on', isPlaying);
+  },
+
+  async _transport(name, method) {
+    try {
+      const res = await fetch('/api/spotify/' + name, { method });
+      if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      console.warn('Spotify ' + name + ' failed:', e.message);
+    }
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this._poll(), 600);
+  },
+
+  // ── Volume drag ────────────────────────────────────
+  _dragVolume(track, evt) {
+    const rect = track.getBoundingClientRect();
+    const x = (evt.clientX ?? 0) - rect.left;
+    let pct = Math.round((x / rect.width) * 100);
+    pct = Math.max(0, Math.min(100, pct));
+    this._volume = pct;
+    this._paintVolume();
+  },
+
+  _paintVolume() {
+    const root = document.getElementById('nowPlaying');
+    if (!root) return;
+    const fill = root.querySelector('.np-vol-fill');
+    if (fill) fill.style.width = this._volume + '%';
+    const val = root.querySelector('.np-vol-value');
+    if (val) val.textContent = this._volume + '%';
+  },
+
+  async _commitVolume() {
+    const v = this._volume;
+    try {
+      const res = await fetch('/api/spotify/volume?volume_percent=' + v, { method: 'PUT' });
+      if (!res.ok && res.status !== 204) {
+        // Some Connect devices don't accept volume (Echo, casts). Log and move on.
+        console.warn('Spotify volume rejected (' + res.status + ') — device may not support it');
+      }
+    } catch (e) {
+      console.warn('Spotify volume failed:', e.message);
+    } finally {
+      this._pendingVolume = false;
+    }
+  },
+
+  // ── Devices ────────────────────────────────────────
+  async _refreshDevices() {
+    try {
+      const res = await fetch('/api/spotify/devices');
+      if (!res.ok) return;
+      const data = await res.json();
+      this._devices = data.devices || [];
+      this._renderDeviceList();
+    } catch (e) { /* skip */ }
+  },
+
+  _renderDeviceList() {
+    const root = document.getElementById('nowPlaying');
+    if (!root) return;
+    const list = root.querySelector('.np-device-list');
+    const btnLabel = root.querySelector('.np-device-label');
+    const active = this._devices.find(d => d.is_active);
+    btnLabel.textContent = active ? `Playing on ${active.name}` : 'Choose device';
+    if (!this._devices.length) {
+      list.innerHTML = '<div class="np-device-empty">No active Spotify devices</div>';
+      return;
+    }
+    list.innerHTML = this._devices.map(d => `
+      <div class="np-device-row-item ${d.is_active ? 'active' : ''}" data-id="${d.id}">
+        <span class="np-device-name">${this._escape(d.name)}</span>
+        <span class="np-device-type">${this._escape(d.type || '')}</span>
+      </div>
+    `).join('');
+  },
+
+  _escape(s) {
+    return (s || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  },
+
+  async _transferTo(deviceId) {
+    if (!deviceId) return;
+    try {
+      const res = await fetch('/api/spotify/transfer', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId, play: this._isPlaying }),
+      });
+      if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      console.warn('Spotify transfer failed:', e.message);
+    }
+    // Spotify needs a beat to flip is_active on the new device.
+    setTimeout(() => { this._refreshDevices(); this._poll(); }, 600);
   },
 
 };
 
 // Self-bootstrap. spotify.js has no dependency on State — it only talks
-// to /api/spotify/* — so it can init as soon as the DOM is parsed,
-// independent of App.init()'s Homebridge handshake.
+// to /api/spotify/* — so it can init as soon as the DOM is parsed.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => Spotify.init());
 } else {

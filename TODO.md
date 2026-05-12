@@ -32,3 +32,23 @@
 
 ### HomeKit ↔ Casa Control sync (deferred)
 - HomeKit rooms live on Apple devices, not in Homebridge. Casa Control would need to be a HAP controller (read pairings, query rooms) to sync. Significant project — only worth it if maintaining rooms in two places becomes painful.
+
+### Home Assistant migration path (opportunistic)
+- **Why this is on the radar:** Homebridge's plugin ecosystem is volunteer-run and thin in places. Plugins for niche devices (current pain: `homebridge-plugin-aqara` broken on HB v2, author MIA) tend to rot. HA has ~1,300 first-party core integrations, paid maintainers via Nabu Casa, and HACS as a fallback for the long tail. For sustainability over 5+ years, HA's integration layer is the safer bet.
+- **Strategy:** don't migrate, *coexist*. HA runs alongside Homebridge on the Pi (or in Docker). The iOS app still consumes only HomeKit, so the swap is invisible to it.
+- **Architecture once both are running:**
+  - HA's `HomeKit Bridge` integration exposes HA entities as HomeKit accessories.
+  - Devices stay on whichever bridge handles them better.
+  - Casa Control sees a unified HomeKit world; doesn't know or care which bridge a device came from.
+- **Migration triggers (move a device when one of these hits):**
+  1. Its Homebridge plugin breaks and the author isn't responsive (Aqara today).
+  2. HA has a clearly better integration (more entities exposed, better state modeling).
+  3. The device is Matter-native and Homebridge v2 native Matter isn't ready yet (covered by the Matter section above).
+- **Setup steps (when ready):**
+  1. Install HA OS or HA Container on the Pi. HA Container (Docker) is lightest — `ghcr.io/home-assistant/home-assistant:stable`.
+  2. Add integrations for the devices being migrated.
+  3. Enable HA's `HomeKit Bridge` integration → pair it to Apple Home (separate pairing from Homebridge — they're two distinct HomeKit bridges).
+  4. Remove the corresponding Homebridge plugin so the same device isn't double-bridged.
+  5. Verify in Casa Control that the device still appears and works.
+- **What stays on Homebridge indefinitely:** HomeKit-flavored stuff where Homebridge's ecosystem is stronger — HKSV camera plugins, Pico-remote scene exposure, Shortcuts trigger fakes, anything where the plugin was clearly written by/for HomeKit users.
+- **What this unlocks beyond plugin sustainability:** HA's recorder gives free historical data (sensor history, energy graphs) — could replace the "build our own logger" item if we ever want history features in Casa Control. HA also gets us a real automation engine for server-side rules that don't depend on the phone being home.

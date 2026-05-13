@@ -1,4 +1,16 @@
-# Casa Control — iOS (HomeKit)
+# Casa Control — iOS (HomeKit) — ARCHIVED
+
+> **Status: archived.** This iOS app was built on top of HomeKit + Homebridge.
+> The project pivoted away from Homebridge to Home Assistant as the integration
+> layer, and from a native iOS app to a Smartmorphic-themed HA frontend (see
+> `../ha/`). This directory is preserved as reference and is not actively
+> maintained.
+>
+> The full pre-archive working state is preserved on the
+> `archive/ios-homekit-app` branch. If you want to revive this, branch from
+> there.
+
+---
 
 Native SwiftUI app that talks to HomeKit directly, styled to match the
 Smartmorphic design system used by the existing web app. Sits alongside the

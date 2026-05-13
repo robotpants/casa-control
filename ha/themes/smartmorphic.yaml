@@ -1,0 +1,318 @@
+# =============================================================================
+# Smartmorphic — Home Assistant theme
+# Port of public/css/smartmorphic.css to HA's theming system.
+#
+# Principles preserved:
+#   1. Single surface: bg and card bg are identical color; depth comes from
+#      paired light/dark shadows only.
+#   2. Three depth levels via custom CSS variables (raised, raised-sm, pressed)
+#      that custom Lovelace cards can reference once they exist.
+#   3. Ember accent (#e8653a) reserved for active/focus/brand.
+#
+# Limits worth knowing (Phase 1 / theme-only):
+#   - HA's built-in cards (Entities, Tile, Glance, etc.) honor color + radius +
+#     box-shadow variables but their internal layout is fixed. Some cards
+#     will look "themed" but not "Smartmorphic" until they're replaced with
+#     custom Lovelace cards in Phase 2.
+#   - Mushroom cards (HACS) honor most of these variables and will look
+#     close-to-right out of the box if you use them.
+# =============================================================================
+
+Smartmorphic:
+  modes:
+    # =========================================================================
+    # LIGHT
+    # =========================================================================
+    light:
+      # ---- Brand / accent ----
+      primary-color: "#e8653a"
+      accent-color: "#e8653a"
+      dark-primary-color: "#c5512c"
+      light-primary-color: "#f0a050"
+      text-primary-color: "#ffffff"  # text on primary fill
+
+      # ---- Surfaces (single-surface principle) ----
+      primary-background-color: "#e2e4ec"
+      secondary-background-color: "#e2e4ec"
+      card-background-color: "#e2e4ec"
+      ha-card-background: "#e2e4ec"
+      paper-card-background-color: "#e2e4ec"
+      paper-listbox-background-color: "#e2e4ec"
+      paper-dialog-background-color: "#e2e4ec"
+      table-row-background-color: "#e2e4ec"
+      table-row-alternative-background-color: "#dadce4"
+
+      # App header (top bar)
+      app-header-background-color: "#e2e4ec"
+      app-header-text-color: "#2c2e3a"
+      app-header-edit-background-color: "#e2e4ec"
+
+      # Sidebar
+      sidebar-background-color: "#e2e4ec"
+      sidebar-text-color: "#2c2e3a"
+      sidebar-icon-color: "#6b6e7d"
+      sidebar-selected-background-color: "#e2e4ec"
+      sidebar-selected-text-color: "#e8653a"
+      sidebar-selected-icon-color: "#e8653a"
+
+      # ---- Text ----
+      primary-text-color: "#2c2e3a"
+      secondary-text-color: "#6b6e7d"
+      disabled-text-color: "#7d8092"
+      text-color: "#2c2e3a"
+
+      # ---- Cards (the important one) ----
+      # Single-surface: no fill differentiation, no border. Shadow does the work.
+      ha-card-border-radius: "18px"
+      ha-card-border-width: "0"
+      ha-card-border-color: "transparent"
+      ha-card-box-shadow: >
+        6px 6px 14px rgba(163,167,185,0.55),
+        -6px -6px 14px rgba(255,255,255,0.72)
+
+      # ---- Icons / states ----
+      state-icon-color: "#7d8092"
+      state-icon-active-color: "#e8653a"
+      state-icon-unavailable-color: "#7d8092"
+
+      # ---- Switches / toggles ----
+      switch-checked-color: "#e8653a"
+      switch-checked-button-color: "#ffffff"
+      switch-checked-track-color: "#e8653a"
+      switch-unchecked-color: "#c4c7d4"
+      switch-unchecked-button-color: "#ffffff"
+      switch-unchecked-track-color: "#c4c7d4"
+      paper-toggle-button-checked-button-color: "#ffffff"
+      paper-toggle-button-checked-bar-color: "#e8653a"
+      paper-toggle-button-unchecked-button-color: "#ffffff"
+      paper-toggle-button-unchecked-bar-color: "#c4c7d4"
+
+      # ---- Sliders ----
+      paper-slider-knob-color: "#e8653a"
+      paper-slider-knob-start-color: "#e8653a"
+      paper-slider-pin-color: "#e8653a"
+      paper-slider-active-color: "#e8653a"
+      paper-slider-container-color: "#c4c7d4"
+      paper-slider-secondary-color: "#f0a050"
+
+      # ---- Buttons ----
+      mdc-theme-primary: "#e8653a"
+      mdc-theme-on-primary: "#ffffff"
+      mdc-button-outline-color: "#e8653a"
+      paper-item-icon-color: "#7d8092"
+      paper-item-icon-active-color: "#e8653a"
+
+      # ---- Status / semantic ----
+      success-color: "#3abf7a"
+      warning-color: "#e8b83a"
+      error-color: "#e84a3a"
+      info-color: "#3a8ee8"
+      label-badge-green: "#3abf7a"
+      label-badge-yellow: "#e8b83a"
+      label-badge-red: "#e84a3a"
+      label-badge-blue: "#3a8ee8"
+
+      # ---- Dividers ----
+      divider-color: "rgba(163,167,185,0.20)"
+
+      # ---- Fonts ----
+      # Variable web fonts loaded via /local/smartmorphic-fonts.css
+      # (see ha/README.md for setup).
+      primary-font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-base_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-code_-_font-family: "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+      paper-font-body1_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-subhead_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-headline_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      paper-font-title_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      ha-card-header-font-family: "Outfit, system-ui, -apple-system, sans-serif"
+
+      # =========================================================================
+      # Custom Smartmorphic tokens (for future custom Lovelace cards in Phase 2+)
+      # Mushroom + button-card can reference these via card-mod or directly.
+      # =========================================================================
+
+      # Shadow recipes (paired light/dark) — matches CSS spec
+      smartmorphic-shadow-light: "rgba(255,255,255,0.72)"
+      smartmorphic-shadow-dark: "rgba(163,167,185,0.55)"
+      smartmorphic-shadow-inset-light: "rgba(255,255,255,0.50)"
+      smartmorphic-shadow-inset-dark: "rgba(163,167,185,0.40)"
+
+      smartmorphic-neu-raised: >
+        6px 6px 14px rgba(163,167,185,0.55),
+        -6px -6px 14px rgba(255,255,255,0.72)
+      smartmorphic-neu-raised-sm: >
+        4px 4px 10px rgba(163,167,185,0.55),
+        -4px -4px 10px rgba(255,255,255,0.72)
+      smartmorphic-neu-raised-lg: >
+        10px 10px 24px rgba(163,167,185,0.55),
+        -10px -10px 24px rgba(255,255,255,0.72)
+      smartmorphic-neu-pressed: >
+        inset 3px 3px 6px rgba(163,167,185,0.40),
+        inset -3px -3px 6px rgba(255,255,255,0.50)
+      smartmorphic-neu-pressed-sm: >
+        inset 2px 2px 5px rgba(163,167,185,0.40),
+        inset -2px -2px 5px rgba(255,255,255,0.50)
+
+      # Accent glow
+      smartmorphic-accent: "#e8653a"
+      smartmorphic-accent-glow: "rgba(232,101,58,0.35)"
+
+      # Radii
+      smartmorphic-radius: "18px"
+      smartmorphic-radius-sm: "12px"
+      smartmorphic-radius-lg: "24px"
+      smartmorphic-radius-pill: "999px"
+
+      # Device color presets (never used as UI accent)
+      smartmorphic-warm-2700: "#ffd9a8"
+      smartmorphic-soft-3000: "#ffe8cc"
+      smartmorphic-day-5000: "#f5f0e8"
+      smartmorphic-color-amber: "#e8b83a"
+      smartmorphic-color-green: "#3abf7a"
+      smartmorphic-color-blue: "#3a8ee8"
+      smartmorphic-color-purple: "#9b59b6"
+      smartmorphic-color-pink: "#e84a7a"
+      smartmorphic-color-teal: "#3abfb8"
+
+    # =========================================================================
+    # DARK
+    # =========================================================================
+    dark:
+      # ---- Brand / accent ----
+      primary-color: "#e8653a"
+      accent-color: "#e8653a"
+      dark-primary-color: "#c5512c"
+      light-primary-color: "#f0a050"
+      text-primary-color: "#ffffff"
+
+      # ---- Surfaces ----
+      primary-background-color: "#1a1b22"
+      secondary-background-color: "#1a1b22"
+      card-background-color: "#2b2d37"
+      ha-card-background: "#2b2d37"
+      paper-card-background-color: "#2b2d37"
+      paper-listbox-background-color: "#2b2d37"
+      paper-dialog-background-color: "#2b2d37"
+      table-row-background-color: "#2b2d37"
+      table-row-alternative-background-color: "#32343f"
+
+      app-header-background-color: "#1a1b22"
+      app-header-text-color: "#e4e5eb"
+      app-header-edit-background-color: "#1a1b22"
+
+      sidebar-background-color: "#1a1b22"
+      sidebar-text-color: "#e4e5eb"
+      sidebar-icon-color: "#9a9caa"
+      sidebar-selected-background-color: "#2b2d37"
+      sidebar-selected-text-color: "#e8653a"
+      sidebar-selected-icon-color: "#e8653a"
+
+      # ---- Text ----
+      primary-text-color: "#e4e5eb"
+      secondary-text-color: "#9a9caa"
+      disabled-text-color: "#5e6070"
+      text-color: "#e4e5eb"
+
+      # ---- Cards ----
+      ha-card-border-radius: "18px"
+      ha-card-border-width: "0"
+      ha-card-border-color: "transparent"
+      ha-card-box-shadow: >
+        10px 10px 24px rgba(0,0,0,0.70),
+        -6px -6px 16px rgba(60,63,78,0.25)
+
+      # ---- Icons / states ----
+      state-icon-color: "#9a9caa"
+      state-icon-active-color: "#e8653a"
+      state-icon-unavailable-color: "#5e6070"
+
+      # ---- Switches ----
+      switch-checked-color: "#e8653a"
+      switch-checked-button-color: "#ffffff"
+      switch-checked-track-color: "#e8653a"
+      switch-unchecked-color: "#3a3d4a"
+      switch-unchecked-button-color: "#ffffff"
+      switch-unchecked-track-color: "#3a3d4a"
+      paper-toggle-button-checked-button-color: "#ffffff"
+      paper-toggle-button-checked-bar-color: "#e8653a"
+      paper-toggle-button-unchecked-button-color: "#ffffff"
+      paper-toggle-button-unchecked-bar-color: "#3a3d4a"
+
+      # ---- Sliders ----
+      paper-slider-knob-color: "#e8653a"
+      paper-slider-knob-start-color: "#e8653a"
+      paper-slider-pin-color: "#e8653a"
+      paper-slider-active-color: "#e8653a"
+      paper-slider-container-color: "#3a3d4a"
+      paper-slider-secondary-color: "#f0a050"
+
+      # ---- Buttons ----
+      mdc-theme-primary: "#e8653a"
+      mdc-theme-on-primary: "#ffffff"
+      mdc-button-outline-color: "#e8653a"
+      paper-item-icon-color: "#9a9caa"
+      paper-item-icon-active-color: "#e8653a"
+
+      # ---- Status / semantic ----
+      success-color: "#3abf7a"
+      warning-color: "#e8b83a"
+      error-color: "#e84a3a"
+      info-color: "#3a8ee8"
+      label-badge-green: "#3abf7a"
+      label-badge-yellow: "#e8b83a"
+      label-badge-red: "#e84a3a"
+      label-badge-blue: "#3a8ee8"
+
+      # ---- Dividers ----
+      divider-color: "rgba(255,255,255,0.08)"
+
+      # ---- Fonts ----
+      primary-font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-base_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-code_-_font-family: "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+      paper-font-body1_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-subhead_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-headline_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      paper-font-title_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      ha-card-header-font-family: "Outfit, system-ui, -apple-system, sans-serif"
+
+      # ---- Custom Smartmorphic tokens ----
+      smartmorphic-shadow-light: "rgba(70,73,88,0.45)"
+      smartmorphic-shadow-dark: "rgba(0,0,0,0.90)"
+      smartmorphic-shadow-inset-light: "rgba(70,73,88,0.30)"
+      smartmorphic-shadow-inset-dark: "rgba(0,0,0,0.70)"
+
+      smartmorphic-neu-raised: >
+        10px 10px 24px rgba(0,0,0,0.70),
+        -6px -6px 16px rgba(60,63,78,0.25)
+      smartmorphic-neu-raised-sm: >
+        6px 6px 14px rgba(0,0,0,0.70),
+        -4px -4px 10px rgba(60,63,78,0.20)
+      smartmorphic-neu-raised-lg: >
+        14px 14px 32px rgba(0,0,0,0.75),
+        -8px -8px 20px rgba(60,63,78,0.30)
+      smartmorphic-neu-pressed: >
+        inset 4px 4px 8px rgba(0,0,0,0.60),
+        inset -4px -4px 8px rgba(60,63,78,0.15)
+      smartmorphic-neu-pressed-sm: >
+        inset 3px 3px 6px rgba(0,0,0,0.55),
+        inset -3px -3px 6px rgba(60,63,78,0.12)
+
+      smartmorphic-accent: "#e8653a"
+      smartmorphic-accent-glow: "rgba(232,101,58,0.35)"
+
+      smartmorphic-radius: "18px"
+      smartmorphic-radius-sm: "12px"
+      smartmorphic-radius-lg: "24px"
+      smartmorphic-radius-pill: "999px"
+
+      smartmorphic-warm-2700: "#ffd9a8"
+      smartmorphic-soft-3000: "#ffe8cc"
+      smartmorphic-day-5000: "#f5f0e8"
+      smartmorphic-color-amber: "#e8b83a"
+      smartmorphic-color-green: "#3abf7a"
+      smartmorphic-color-blue: "#3a8ee8"
+      smartmorphic-color-purple: "#9b59b6"
+      smartmorphic-color-pink: "#e84a7a"
+      smartmorphic-color-teal: "#3abfb8"

@@ -1,0 +1,679 @@
+# =============================================================================
+# Smartmorphic — Home Assistant theme (v2)
+# Full port of public/css/smartmorphic.css plus card-mod CSS injection and
+# Mushroom card token overrides.
+#
+# Principles preserved:
+#   1. Single surface — bg and card bg are identical color; depth comes from
+#      paired light/dark shadows only.
+#   2. Three depth levels via custom CSS variables (raised, raised-sm, pressed)
+#      that custom Lovelace cards can reference.
+#   3. Ember accent (#e8653a) reserved for active/focus/brand states; carries
+#      an accent-glow halo.
+#
+# Companion install requirements (all optional but recommended):
+#   - HACS                  (for the next two)
+#   - card-mod              (lets this theme push CSS into card internals)
+#   - mushroom              (best-fit card pack for Smartmorphic look)
+# =============================================================================
+
+Smartmorphic:
+  modes:
+    # =========================================================================
+    # LIGHT
+    # =========================================================================
+    light:
+      # ---- Brand / accent ----
+      primary-color: "#e8653a"
+      accent-color: "#e8653a"
+      dark-primary-color: "#c5512c"
+      light-primary-color: "#f0a050"
+      text-primary-color: "#ffffff"
+
+      # ---- Surfaces (single-surface principle) ----
+      primary-background-color: "#e2e4ec"
+      secondary-background-color: "#e2e4ec"
+      card-background-color: "#e2e4ec"
+      ha-card-background: "#e2e4ec"
+      paper-card-background-color: "#e2e4ec"
+      paper-listbox-background-color: "#e2e4ec"
+      paper-dialog-background-color: "#e2e4ec"
+      mdc-dialog-scrim-color: "rgba(26,27,34,0.5)"
+      table-row-background-color: "#e2e4ec"
+      table-row-alternative-background-color: "#dadce4"
+
+      # App header
+      app-header-background-color: "#e2e4ec"
+      app-header-text-color: "#2c2e3a"
+      app-header-edit-background-color: "#e2e4ec"
+      app-header-selection-bar-color: "#e8653a"
+
+      # Sidebar
+      sidebar-background-color: "#e2e4ec"
+      sidebar-text-color: "#2c2e3a"
+      sidebar-icon-color: "#6b6e7d"
+      sidebar-selected-background-color: "#e2e4ec"
+      sidebar-selected-text-color: "#e8653a"
+      sidebar-selected-icon-color: "#e8653a"
+
+      # ---- Text ----
+      primary-text-color: "#2c2e3a"
+      secondary-text-color: "#6b6e7d"
+      disabled-text-color: "#7d8092"
+      text-color: "#2c2e3a"
+      text-medium-emphasis-color: "#6b6e7d"
+
+      # ---- Cards ----
+      ha-card-border-radius: "18px"
+      ha-card-border-width: "0"
+      ha-card-border-color: "transparent"
+      ha-card-box-shadow: >
+        6px 6px 14px rgba(163,167,185,0.55),
+        -6px -6px 14px rgba(255,255,255,0.72)
+      ha-card-header-color: "#2c2e3a"
+
+      # ---- Icons / states ----
+      state-icon-color: "#7d8092"
+      state-icon-active-color: "#e8653a"
+      state-icon-unavailable-color: "#7d8092"
+      state-icon-error-color: "#e84a3a"
+
+      # ---- Switches ----
+      switch-checked-color: "#e8653a"
+      switch-checked-button-color: "#ffffff"
+      switch-checked-track-color: "#e8653a"
+      switch-unchecked-color: "#c4c7d4"
+      switch-unchecked-button-color: "#ffffff"
+      switch-unchecked-track-color: "#c4c7d4"
+      paper-toggle-button-checked-button-color: "#ffffff"
+      paper-toggle-button-checked-bar-color: "#e8653a"
+      paper-toggle-button-unchecked-button-color: "#ffffff"
+      paper-toggle-button-unchecked-bar-color: "#c4c7d4"
+      mdc-switch-selected-track-color: "#e8653a"
+      mdc-switch-unselected-track-color: "#c4c7d4"
+      mdc-switch-selected-handle-color: "#ffffff"
+      mdc-switch-unselected-handle-color: "#ffffff"
+
+      # ---- Sliders (incl. brightness/temp) ----
+      paper-slider-knob-color: "#e8653a"
+      paper-slider-knob-start-color: "#e8653a"
+      paper-slider-pin-color: "#e8653a"
+      paper-slider-active-color: "#e8653a"
+      paper-slider-container-color: "#c4c7d4"
+      paper-slider-secondary-color: "#f0a050"
+      ha-slider-thumb-color: "#e8653a"
+      ha-slider-track-color: "#c4c7d4"
+      ha-slider-active-color: "#e8653a"
+
+      # ---- Buttons / mdc ----
+      mdc-theme-primary: "#e8653a"
+      mdc-theme-on-primary: "#ffffff"
+      mdc-theme-secondary: "#e8653a"
+      mdc-button-outline-color: "#e8653a"
+      mdc-icon-button-size: "44px"
+      mdc-ripple-press-opacity: "0.12"
+      paper-item-icon-color: "#7d8092"
+      paper-item-icon-active-color: "#e8653a"
+      paper-item-selected-color: "rgba(232,101,58,0.12)"
+
+      # ---- Status / semantic ----
+      success-color: "#3abf7a"
+      warning-color: "#e8b83a"
+      error-color: "#e84a3a"
+      info-color: "#3a8ee8"
+      label-badge-green: "#3abf7a"
+      label-badge-yellow: "#e8b83a"
+      label-badge-red: "#e84a3a"
+      label-badge-blue: "#3a8ee8"
+      label-badge-grey: "#7d8092"
+      label-badge-background-color: "#e2e4ec"
+      label-badge-text-color: "#2c2e3a"
+
+      # ---- Dividers ----
+      divider-color: "rgba(163,167,185,0.20)"
+      input-fill-color: "#e2e4ec"
+      input-ink-color: "#2c2e3a"
+      input-label-ink-color: "#6b6e7d"
+      input-idle-line-color: "rgba(163,167,185,0.3)"
+      input-hover-line-color: "rgba(163,167,185,0.6)"
+
+      # ---- Code editor / mono ----
+      code-editor-background-color: "#e2e4ec"
+      codemirror-keyword: "#e8653a"
+      codemirror-string: "#3abf7a"
+      codemirror-number: "#3a8ee8"
+      codemirror-comment: "#7d8092"
+
+      # ---- Markdown content ----
+      markdown-code-background-color: "rgba(163,167,185,0.15)"
+
+      # ---- Fonts ----
+      primary-font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-base_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-code_-_font-family: "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+      paper-font-body1_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-subhead_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-headline_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      paper-font-title_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      ha-card-header-font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      ha-card-header-font-weight: "600"
+      ha-card-header-font-size: "16px"
+
+      # =========================================================================
+      # Smartmorphic custom tokens (consumed by card-mod CSS below + future
+      # custom Lovelace cards)
+      # =========================================================================
+      smartmorphic-shadow-light: "rgba(255,255,255,0.72)"
+      smartmorphic-shadow-dark: "rgba(163,167,185,0.55)"
+      smartmorphic-shadow-inset-light: "rgba(255,255,255,0.50)"
+      smartmorphic-shadow-inset-dark: "rgba(163,167,185,0.40)"
+
+      smartmorphic-neu-raised: >
+        6px 6px 14px rgba(163,167,185,0.55),
+        -6px -6px 14px rgba(255,255,255,0.72)
+      smartmorphic-neu-raised-sm: >
+        4px 4px 10px rgba(163,167,185,0.55),
+        -4px -4px 10px rgba(255,255,255,0.72)
+      smartmorphic-neu-raised-lg: >
+        10px 10px 24px rgba(163,167,185,0.55),
+        -10px -10px 24px rgba(255,255,255,0.72)
+      smartmorphic-neu-pressed: >
+        inset 3px 3px 6px rgba(163,167,185,0.40),
+        inset -3px -3px 6px rgba(255,255,255,0.50)
+      smartmorphic-neu-pressed-sm: >
+        inset 2px 2px 5px rgba(163,167,185,0.40),
+        inset -2px -2px 5px rgba(255,255,255,0.50)
+
+      smartmorphic-accent: "#e8653a"
+      smartmorphic-accent-glow: "rgba(232,101,58,0.35)"
+      smartmorphic-accent-glow-tight: "rgba(232,101,58,0.55)"
+
+      smartmorphic-radius: "18px"
+      smartmorphic-radius-sm: "12px"
+      smartmorphic-radius-lg: "24px"
+      smartmorphic-radius-pill: "999px"
+
+      smartmorphic-warm-2700: "#ffd9a8"
+      smartmorphic-soft-3000: "#ffe8cc"
+      smartmorphic-day-5000: "#f5f0e8"
+      smartmorphic-color-amber: "#e8b83a"
+      smartmorphic-color-green: "#3abf7a"
+      smartmorphic-color-blue: "#3a8ee8"
+      smartmorphic-color-purple: "#9b59b6"
+      smartmorphic-color-pink: "#e84a7a"
+      smartmorphic-color-teal: "#3abfb8"
+
+      # =========================================================================
+      # Mushroom card overrides
+      # https://github.com/piitaya/lovelace-mushroom
+      # =========================================================================
+      mush-rgb-card: "226, 228, 236"
+      mush-card-primary-font-size: "14px"
+      mush-card-primary-font-weight: "600"
+      mush-card-primary-line-height: "1.4"
+      mush-card-secondary-font-size: "11px"
+      mush-card-secondary-font-weight: "400"
+      mush-card-secondary-line-height: "1.4"
+      mush-title-font-weight: "600"
+      mush-title-font-size: "20px"
+      mush-title-letter-spacing: "-0.3px"
+      mush-subtitle-font-weight: "500"
+      mush-subtitle-font-size: "13px"
+      mush-icon-border-radius: "12px"
+      mush-icon-size: "38px"
+      mush-icon-symbol-size: "18px"
+      mush-control-border-radius: "12px"
+      mush-control-height: "40px"
+      mush-control-icon-size: "18px"
+      mush-slider-color: "#e8653a"
+      mush-rgb-state-light: "232, 101, 58"
+      mush-rgb-state-fan: "58, 191, 184"
+      mush-rgb-state-entity: "232, 101, 58"
+      mush-rgb-state-cover: "232, 184, 58"
+      mush-rgb-state-climate: "232, 101, 58"
+      mush-rgb-disabled: "125, 128, 146"
+      mush-rgb-purple: "155, 89, 182"
+      mush-rgb-pink: "232, 74, 122"
+      mush-rgb-red: "232, 74, 58"
+      mush-rgb-deep-orange: "240, 160, 80"
+      mush-rgb-orange: "232, 101, 58"
+      mush-rgb-amber: "232, 184, 58"
+      mush-rgb-yellow: "240, 220, 80"
+      mush-rgb-lime: "180, 220, 80"
+      mush-rgb-green: "58, 191, 122"
+      mush-rgb-teal: "58, 191, 184"
+      mush-rgb-cyan: "100, 200, 220"
+      mush-rgb-light-blue: "120, 180, 232"
+      mush-rgb-blue: "58, 142, 232"
+      mush-rgb-indigo: "100, 100, 200"
+      mush-rgb-deep-purple: "120, 80, 180"
+      mush-rgb-grey: "125, 128, 146"
+      mush-rgb-blue-grey: "120, 130, 150"
+      mush-rgb-brown: "150, 100, 80"
+
+      # =========================================================================
+      # card-mod theme — pushes CSS into card internals
+      # https://github.com/thomasloven/lovelace-card-mod
+      # =========================================================================
+      card-mod-theme: Smartmorphic
+
+      card-mod-root-yaml: |
+        .: |
+          /* Smooth scrollbars */
+          ::-webkit-scrollbar { width: 10px; height: 10px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(163,167,185,0.35);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+          }
+          ::-webkit-scrollbar-thumb:hover { background: rgba(163,167,185,0.55); background-clip: content-box; }
+
+          /* Focus ring on interactive elements */
+          *:focus-visible {
+            outline: 2px solid var(--smartmorphic-accent);
+            outline-offset: 3px;
+            border-radius: 4px;
+          }
+
+      card-mod-card-yaml: |
+        .: |
+          ha-card {
+            transition: box-shadow 0.25s cubic-bezier(0.25,0.46,0.45,0.94);
+            border-radius: var(--smartmorphic-radius) !important;
+          }
+          /* Inner pressed wells for icon containers */
+          ha-card .icon, ha-card state-badge {
+            border-radius: 12px;
+            padding: 6px;
+            background: var(--ha-card-background);
+            box-shadow: var(--smartmorphic-neu-pressed-sm);
+            transition: box-shadow 0.2s, color 0.2s;
+          }
+          ha-card .state-badge ha-state-icon[data-state="on"],
+          ha-card .icon[data-state="on"] {
+            color: var(--smartmorphic-accent) !important;
+            box-shadow:
+              var(--smartmorphic-neu-pressed-sm),
+              0 0 12px var(--smartmorphic-accent-glow);
+          }
+          /* Tile card stat text uses Outfit display weight */
+          hui-tile-card .primary,
+          ha-tile-info .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.2px;
+          }
+          hui-tile-card .secondary,
+          ha-tile-info .secondary {
+            font-weight: 500 !important;
+          }
+          /* Tile card icons: soft accent glow + tighter transition */
+          hui-tile-card ha-tile-icon {
+            transition: filter 0.25s ease-out, transform 0.15s ease-out;
+            filter: drop-shadow(0 0 8px var(--smartmorphic-accent-glow));
+          }
+          hui-tile-card:active ha-tile-icon {
+            transform: scale(0.95);
+          }
+          /* Mushroom cards: match stat font */
+          mushroom-state-info .primary,
+          mushroom-card .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
+          }
+          /* Soft dividers inside entities cards */
+          ha-card hui-entities-toggle,
+          ha-card .divider, ha-card hr {
+            background: var(--divider-color) !important;
+          }
+          /* Button-row pressed-on look */
+          ha-card mwc-button[outlined],
+          ha-card mwc-button[unelevated] {
+            --mdc-shape-small: 12px;
+            --mdc-button-outline-width: 0;
+            box-shadow: var(--smartmorphic-neu-raised-sm);
+          }
+          ha-card mwc-button:active {
+            box-shadow: var(--smartmorphic-neu-pressed-sm);
+          }
+
+      card-mod-more-info-yaml: |
+        .: |
+          /* The expanded entity sheet */
+          ha-dialog {
+            --mdc-shape-medium: 18px;
+            --mdc-dialog-min-width: 360px;
+          }
+          ha-dialog .mdc-dialog__surface {
+            box-shadow: var(--smartmorphic-neu-raised-lg) !important;
+            background: var(--ha-card-background);
+          }
+
+      card-mod-view-yaml: |
+        .: |
+          /* Wider gutter, generous padding */
+          hui-view {
+            padding: 8px 4px;
+          }
+
+    # =========================================================================
+    # DARK
+    # =========================================================================
+    dark:
+      # ---- Brand / accent ----
+      primary-color: "#e8653a"
+      accent-color: "#e8653a"
+      dark-primary-color: "#c5512c"
+      light-primary-color: "#f0a050"
+      text-primary-color: "#ffffff"
+
+      # ---- Surfaces ----
+      primary-background-color: "#1a1b22"
+      secondary-background-color: "#1a1b22"
+      card-background-color: "#2b2d37"
+      ha-card-background: "#2b2d37"
+      paper-card-background-color: "#2b2d37"
+      paper-listbox-background-color: "#2b2d37"
+      paper-dialog-background-color: "#2b2d37"
+      mdc-dialog-scrim-color: "rgba(0,0,0,0.7)"
+      table-row-background-color: "#2b2d37"
+      table-row-alternative-background-color: "#32343f"
+
+      app-header-background-color: "#1a1b22"
+      app-header-text-color: "#e4e5eb"
+      app-header-edit-background-color: "#1a1b22"
+      app-header-selection-bar-color: "#e8653a"
+
+      sidebar-background-color: "#1a1b22"
+      sidebar-text-color: "#e4e5eb"
+      sidebar-icon-color: "#9a9caa"
+      sidebar-selected-background-color: "#2b2d37"
+      sidebar-selected-text-color: "#e8653a"
+      sidebar-selected-icon-color: "#e8653a"
+
+      # ---- Text ----
+      primary-text-color: "#e4e5eb"
+      secondary-text-color: "#9a9caa"
+      disabled-text-color: "#5e6070"
+      text-color: "#e4e5eb"
+      text-medium-emphasis-color: "#9a9caa"
+
+      # ---- Cards ----
+      ha-card-border-radius: "18px"
+      ha-card-border-width: "0"
+      ha-card-border-color: "transparent"
+      ha-card-box-shadow: >
+        10px 10px 24px rgba(0,0,0,0.70),
+        -6px -6px 16px rgba(60,63,78,0.25)
+      ha-card-header-color: "#e4e5eb"
+
+      # ---- Icons / states ----
+      state-icon-color: "#9a9caa"
+      state-icon-active-color: "#e8653a"
+      state-icon-unavailable-color: "#5e6070"
+      state-icon-error-color: "#e84a3a"
+
+      # ---- Switches ----
+      switch-checked-color: "#e8653a"
+      switch-checked-button-color: "#ffffff"
+      switch-checked-track-color: "#e8653a"
+      switch-unchecked-color: "#3a3d4a"
+      switch-unchecked-button-color: "#ffffff"
+      switch-unchecked-track-color: "#3a3d4a"
+      paper-toggle-button-checked-button-color: "#ffffff"
+      paper-toggle-button-checked-bar-color: "#e8653a"
+      paper-toggle-button-unchecked-button-color: "#ffffff"
+      paper-toggle-button-unchecked-bar-color: "#3a3d4a"
+      mdc-switch-selected-track-color: "#e8653a"
+      mdc-switch-unselected-track-color: "#3a3d4a"
+      mdc-switch-selected-handle-color: "#ffffff"
+      mdc-switch-unselected-handle-color: "#ffffff"
+
+      # ---- Sliders ----
+      paper-slider-knob-color: "#e8653a"
+      paper-slider-knob-start-color: "#e8653a"
+      paper-slider-pin-color: "#e8653a"
+      paper-slider-active-color: "#e8653a"
+      paper-slider-container-color: "#3a3d4a"
+      paper-slider-secondary-color: "#f0a050"
+      ha-slider-thumb-color: "#e8653a"
+      ha-slider-track-color: "#3a3d4a"
+      ha-slider-active-color: "#e8653a"
+
+      # ---- Buttons / mdc ----
+      mdc-theme-primary: "#e8653a"
+      mdc-theme-on-primary: "#ffffff"
+      mdc-theme-secondary: "#e8653a"
+      mdc-button-outline-color: "#e8653a"
+      mdc-icon-button-size: "44px"
+      mdc-ripple-press-opacity: "0.16"
+      paper-item-icon-color: "#9a9caa"
+      paper-item-icon-active-color: "#e8653a"
+      paper-item-selected-color: "rgba(232,101,58,0.16)"
+
+      # ---- Status / semantic ----
+      success-color: "#3abf7a"
+      warning-color: "#e8b83a"
+      error-color: "#e84a3a"
+      info-color: "#3a8ee8"
+      label-badge-green: "#3abf7a"
+      label-badge-yellow: "#e8b83a"
+      label-badge-red: "#e84a3a"
+      label-badge-blue: "#3a8ee8"
+      label-badge-grey: "#9a9caa"
+      label-badge-background-color: "#2b2d37"
+      label-badge-text-color: "#e4e5eb"
+
+      # ---- Dividers ----
+      divider-color: "rgba(255,255,255,0.08)"
+      input-fill-color: "#2b2d37"
+      input-ink-color: "#e4e5eb"
+      input-label-ink-color: "#9a9caa"
+      input-idle-line-color: "rgba(255,255,255,0.15)"
+      input-hover-line-color: "rgba(255,255,255,0.3)"
+
+      # ---- Code editor / mono ----
+      code-editor-background-color: "#1a1b22"
+      codemirror-keyword: "#e8653a"
+      codemirror-string: "#3abf7a"
+      codemirror-number: "#3a8ee8"
+      codemirror-comment: "#5e6070"
+
+      # ---- Markdown content ----
+      markdown-code-background-color: "rgba(0,0,0,0.4)"
+
+      # ---- Fonts ----
+      primary-font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-base_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-common-code_-_font-family: "JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+      paper-font-body1_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-subhead_-_font-family: "DM Sans, system-ui, -apple-system, sans-serif"
+      paper-font-headline_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      paper-font-title_-_font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      ha-card-header-font-family: "Outfit, system-ui, -apple-system, sans-serif"
+      ha-card-header-font-weight: "600"
+      ha-card-header-font-size: "16px"
+
+      # ---- Custom Smartmorphic tokens ----
+      smartmorphic-shadow-light: "rgba(70,73,88,0.45)"
+      smartmorphic-shadow-dark: "rgba(0,0,0,0.90)"
+      smartmorphic-shadow-inset-light: "rgba(70,73,88,0.30)"
+      smartmorphic-shadow-inset-dark: "rgba(0,0,0,0.70)"
+
+      smartmorphic-neu-raised: >
+        10px 10px 24px rgba(0,0,0,0.70),
+        -6px -6px 16px rgba(60,63,78,0.25)
+      smartmorphic-neu-raised-sm: >
+        6px 6px 14px rgba(0,0,0,0.70),
+        -4px -4px 10px rgba(60,63,78,0.20)
+      smartmorphic-neu-raised-lg: >
+        14px 14px 32px rgba(0,0,0,0.75),
+        -8px -8px 20px rgba(60,63,78,0.30)
+      smartmorphic-neu-pressed: >
+        inset 4px 4px 8px rgba(0,0,0,0.60),
+        inset -4px -4px 8px rgba(60,63,78,0.15)
+      smartmorphic-neu-pressed-sm: >
+        inset 3px 3px 6px rgba(0,0,0,0.55),
+        inset -3px -3px 6px rgba(60,63,78,0.12)
+
+      smartmorphic-accent: "#e8653a"
+      smartmorphic-accent-glow: "rgba(232,101,58,0.35)"
+      smartmorphic-accent-glow-tight: "rgba(232,101,58,0.55)"
+
+      smartmorphic-radius: "18px"
+      smartmorphic-radius-sm: "12px"
+      smartmorphic-radius-lg: "24px"
+      smartmorphic-radius-pill: "999px"
+
+      smartmorphic-warm-2700: "#ffd9a8"
+      smartmorphic-soft-3000: "#ffe8cc"
+      smartmorphic-day-5000: "#f5f0e8"
+      smartmorphic-color-amber: "#e8b83a"
+      smartmorphic-color-green: "#3abf7a"
+      smartmorphic-color-blue: "#3a8ee8"
+      smartmorphic-color-purple: "#9b59b6"
+      smartmorphic-color-pink: "#e84a7a"
+      smartmorphic-color-teal: "#3abfb8"
+
+      # ---- Mushroom overrides ----
+      mush-rgb-card: "43, 45, 55"
+      mush-card-primary-font-size: "14px"
+      mush-card-primary-font-weight: "600"
+      mush-card-primary-line-height: "1.4"
+      mush-card-secondary-font-size: "11px"
+      mush-card-secondary-font-weight: "400"
+      mush-card-secondary-line-height: "1.4"
+      mush-title-font-weight: "600"
+      mush-title-font-size: "20px"
+      mush-title-letter-spacing: "-0.3px"
+      mush-subtitle-font-weight: "500"
+      mush-subtitle-font-size: "13px"
+      mush-icon-border-radius: "12px"
+      mush-icon-size: "38px"
+      mush-icon-symbol-size: "18px"
+      mush-control-border-radius: "12px"
+      mush-control-height: "40px"
+      mush-control-icon-size: "18px"
+      mush-slider-color: "#e8653a"
+      mush-rgb-state-light: "232, 101, 58"
+      mush-rgb-state-fan: "58, 191, 184"
+      mush-rgb-state-entity: "232, 101, 58"
+      mush-rgb-state-cover: "232, 184, 58"
+      mush-rgb-state-climate: "232, 101, 58"
+      mush-rgb-disabled: "94, 96, 112"
+      mush-rgb-purple: "155, 89, 182"
+      mush-rgb-pink: "232, 74, 122"
+      mush-rgb-red: "232, 74, 58"
+      mush-rgb-deep-orange: "240, 160, 80"
+      mush-rgb-orange: "232, 101, 58"
+      mush-rgb-amber: "232, 184, 58"
+      mush-rgb-yellow: "240, 220, 80"
+      mush-rgb-lime: "180, 220, 80"
+      mush-rgb-green: "58, 191, 122"
+      mush-rgb-teal: "58, 191, 184"
+      mush-rgb-cyan: "100, 200, 220"
+      mush-rgb-light-blue: "120, 180, 232"
+      mush-rgb-blue: "58, 142, 232"
+      mush-rgb-indigo: "100, 100, 200"
+      mush-rgb-deep-purple: "120, 80, 180"
+      mush-rgb-grey: "154, 156, 170"
+      mush-rgb-blue-grey: "120, 130, 150"
+      mush-rgb-brown: "150, 100, 80"
+
+      # ---- card-mod ----
+      card-mod-theme: Smartmorphic
+
+      card-mod-root-yaml: |
+        .: |
+          ::-webkit-scrollbar { width: 10px; height: 10px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.10);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+          }
+          ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.20); background-clip: content-box; }
+          *:focus-visible {
+            outline: 2px solid var(--smartmorphic-accent);
+            outline-offset: 3px;
+            border-radius: 4px;
+          }
+
+      card-mod-card-yaml: |
+        .: |
+          ha-card {
+            transition: box-shadow 0.25s cubic-bezier(0.25,0.46,0.45,0.94);
+            border-radius: var(--smartmorphic-radius) !important;
+          }
+          ha-card .icon, ha-card state-badge {
+            border-radius: 12px;
+            padding: 6px;
+            background: var(--ha-card-background);
+            box-shadow: var(--smartmorphic-neu-pressed-sm);
+            transition: box-shadow 0.2s, color 0.2s;
+          }
+          ha-card .state-badge ha-state-icon[data-state="on"],
+          ha-card .icon[data-state="on"] {
+            color: var(--smartmorphic-accent) !important;
+            box-shadow:
+              var(--smartmorphic-neu-pressed-sm),
+              0 0 12px var(--smartmorphic-accent-glow);
+          }
+          /* Tile card stat text uses Outfit display weight */
+          hui-tile-card .primary,
+          ha-tile-info .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.2px;
+          }
+          hui-tile-card .secondary,
+          ha-tile-info .secondary {
+            font-weight: 500 !important;
+          }
+          /* Tile card icons: brighter accent glow on dark surface */
+          hui-tile-card ha-tile-icon {
+            transition: filter 0.25s ease-out, transform 0.15s ease-out;
+            filter: drop-shadow(0 0 10px var(--smartmorphic-accent-glow-tight));
+          }
+          hui-tile-card:active ha-tile-icon {
+            transform: scale(0.95);
+          }
+          /* Mushroom cards: match stat font */
+          mushroom-state-info .primary,
+          mushroom-card .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
+          }
+          ha-card hui-entities-toggle,
+          ha-card .divider, ha-card hr {
+            background: var(--divider-color) !important;
+          }
+          ha-card mwc-button[outlined],
+          ha-card mwc-button[unelevated] {
+            --mdc-shape-small: 12px;
+            --mdc-button-outline-width: 0;
+            box-shadow: var(--smartmorphic-neu-raised-sm);
+          }
+          ha-card mwc-button:active {
+            box-shadow: var(--smartmorphic-neu-pressed-sm);
+          }
+
+      card-mod-more-info-yaml: |
+        .: |
+          ha-dialog {
+            --mdc-shape-medium: 18px;
+            --mdc-dialog-min-width: 360px;
+          }
+          ha-dialog .mdc-dialog__surface {
+            box-shadow: var(--smartmorphic-neu-raised-lg) !important;
+            background: var(--ha-card-background);
+          }
+
+      card-mod-view-yaml: |
+        .: |
+          hui-view {
+            padding: 8px 4px;
+          }

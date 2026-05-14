@@ -1,56 +1,38 @@
 # Casa Control — Home Assistant
 
-Smartmorphic design system applied to Home Assistant. Phase 1 ships the
-**theme** (colors, fonts, shadows, radii via HA's theming system). Later
-phases add **custom Lovelace cards** so the neumorphic single-surface look
-extends to every card on a dashboard.
+Smartmorphic design system applied to Home Assistant. Ships as:
 
-## What you get in Phase 1 (theme only)
+- **A theme** — colors, fonts, shadows, radii via HA's theming system. Light + dark with full OS auto-follow.
+- **card-mod CSS injection** — pushes the neumorphic look *into* card internals (icon wells, dividers, buttons, dialogs), not just card surfaces.
+- **Mushroom card token overrides** — Mushroom is the recommended card library; this theme tunes its `--mush-*` variables to Smartmorphic exactly.
+- **A starter dashboard YAML** — drop-in template with a Casa-shaped layout (greeting, scene chips, status tiles, room grid, room detail view).
 
-- All HA UI surfaces (cards, sidebar, app header, dialogs) recolored to the
-  Smartmorphic palette in both light and dark modes.
-- DM Sans / Outfit / JetBrains Mono fonts loaded for the entire frontend.
-- HA cards re-shadowed with the paired light/dark neumorphic recipe (no
-  fill differentiation, depth via shadow only).
-- Ember accent (`#e8653a`) on active states, switches, sliders, focus.
-- Custom CSS variables (`--smartmorphic-neu-raised`, `--smartmorphic-accent-glow`,
-  etc.) exposed for future custom-card work in Phase 2.
+## Recommended install (for the dope look)
 
-**What it won't do:** restructure HA's built-in card layouts. Cards like
-Entities, Tile, and Glance will look themed but not Smartmorphic. That's
-Phase 2 (custom Lovelace cards). For best Phase-1 results pair this with
-**Mushroom cards** (install via HACS) — Mushroom respects most of these
-variables and gets close to the target look without custom code.
+The theme works standalone, but two HACS frontend modules unlock the full visual fidelity. Install them first, then come back here.
 
-## Install
+1. **HACS** — if you don't have it already: <https://hacs.xyz/docs/use/download/download/>.
+2. After HACS is up, in HA: **HACS → Frontend → Explore & download repositories**, install:
+   - **Mushroom** (by piitaya) — modern card pack the theme is tuned for.
+   - **card-mod** (by thomasloven) — CSS injector. Without this, the theme still works but only colors/fonts/card-shadows take effect — internals stay default.
+3. Restart HA after installing both.
 
-These steps assume HA OS or HA Container running, with file access via the
-**Samba**, **File Editor**, or **Studio Code Server** add-ons.
+## Install the theme
 
-### 1. Drop the theme file in
+Assumes HA OS or Container with file access via Samba, File Editor, or Studio Code Server add-on.
 
-Copy `ha/themes/smartmorphic.yaml` to:
+### 1. Drop in the files
 
-```
-config/themes/smartmorphic.yaml
-```
+| Source (this repo)                 | Destination (HA config)              |
+| ---------------------------------- | ------------------------------------ |
+| `ha/themes/smartmorphic.yaml`      | `config/themes/smartmorphic.yaml`    |
+| `ha/www/smartmorphic-fonts.js`     | `config/www/smartmorphic-fonts.js`   |
 
-If the `themes/` directory doesn't exist yet, create it.
+Create the `themes/` directory if it doesn't exist.
 
-### 2. Drop the font loader in
+### 2. Register in `configuration.yaml`
 
-Copy `ha/www/smartmorphic-fonts.js` to:
-
-```
-config/www/smartmorphic-fonts.js
-```
-
-The `www/` directory is served at `/local/` by HA.
-
-### 3. Register the theme and font loader in `configuration.yaml`
-
-Edit `config/configuration.yaml` and add (or merge with your existing
-`frontend:` block):
+Add (or merge into your existing `frontend:` block):
 
 ```yaml
 frontend:
@@ -59,75 +41,88 @@ frontend:
     - /local/smartmorphic-fonts.js
 ```
 
-If you already have a `frontend:` block, just add the `extra_module_url`
-list to it. The `themes:` line you may already have.
+### 3. Restart HA
 
-### 4. Restart Home Assistant
+**Settings → System → Restart Home Assistant.** A full restart is required because `extra_module_url` doesn't pick up on a config reload alone.
 
-**Settings → System → Restart Home Assistant.** (Just reloading themes is
-not enough — `extra_module_url` requires a full restart.)
+### 4. Activate
 
-### 5. Activate the theme
+- **Profile** (bottom-left avatar) → scroll to **Themes** → select **Smartmorphic**.
+- Set **Theme mode** to **Auto** so it follows your OS light/dark setting.
 
-After restart:
+Hard-refresh the browser (`Cmd+Shift+R` / `Ctrl+Shift+R`) once to clear cached frontend assets.
 
-- **Profile** (bottom-left avatar) → scroll to **Themes** → select
-  **Smartmorphic**.
-- Below that, set **Theme mode** to **Auto** so it follows your OS
-  light/dark preference. (Or pin to one mode.)
+## Install the starter dashboard (optional)
 
-You should see the UI recolor immediately. If fonts still look like the
-default (Roboto), hard-refresh the browser (`Cmd+Shift+R` / `Ctrl+Shift+R`)
-to clear the cached frontend.
+`ha/dashboards/smartmorphic-starter.yaml` is a template dashboard built around Mushroom cards. It has placeholder entity IDs marked `REPLACE_ME` you'll need to swap.
+
+1. In HA: **Settings → Dashboards → Add Dashboard → New dashboard from scratch**. Give it a title, an icon, and click Create.
+2. Open it. Top-right kebab → **Edit dashboard**. In the editor, top-right kebab → **Raw configuration editor**.
+3. Paste the entire contents of `smartmorphic-starter.yaml` over the existing YAML. Save.
+4. Search the file for `REPLACE_ME` and replace each placeholder with your actual entity IDs (`light.living_room_main`, `sensor.bedroom_temperature`, etc.).
+5. To make this dashboard the default: **Settings → Dashboards → click your dashboard → Set as default for all users**.
+
+## What looks good out of the box
+
+After install + activation:
+
+- **Sidebar, app header, dialogs** — all Smartmorphic-themed. Sidebar selected item glows ember.
+- **HA built-in cards** — surface, radius, shadow, fonts all updated. Internal layouts still HA's default.
+- **Mushroom cards** — read close to perfect. Use these as your default card type for anything new.
+- **Scrollbars, focus rings, more-info dialog** — restyled via card-mod.
+- **Switches/sliders/toggles** — ember accent everywhere.
 
 ## Troubleshooting
 
 **Theme doesn't appear in the dropdown**
-- The YAML is malformed. HA logs the parse error: **Settings → System →
-  Logs**, filter for "themes."
-- The `themes:` line is missing from `configuration.yaml`.
+- YAML parse error. Check **Settings → System → Logs** filtered for "themes."
+- Missing `themes:` line in `configuration.yaml`.
 
-**Fonts look like Roboto (HA default)**
-- Hard-refresh the browser to clear cached frontend (`Cmd+Shift+R`).
-- Confirm `/local/smartmorphic-fonts.js` loads — open the browser console
-  on any HA page, you should NOT see a 404 for that file.
-- Confirm `extra_module_url` was set and HA was fully **restarted** (not
-  just config-reloaded).
+**Fonts look default (Roboto)**
+- Hard-refresh the browser.
+- Open browser dev tools → Network tab → look for `smartmorphic-fonts.js`. Should be a 200 OK from `/local/smartmorphic-fonts.js`.
+- Confirm `extra_module_url` is set and HA was fully **restarted** (not just config-reloaded).
 
-**Cards still have white backgrounds**
-- A custom card (HACS-installed) may be ignoring `ha-card-background`. Most
-  Mushroom cards respect it; some older custom cards don't. Use card-mod or
-  switch the card type.
+**Card internals (icons, dividers) still look default**
+- card-mod isn't installed, OR was installed but HA wasn't restarted after install.
+- card-mod versions before 3.4 don't support the `card-mod-theme` block. Update via HACS.
 
-**Shadows look wrong / hard edges**
-- Some cards stack `ha-card` inside other containers that clip overflow.
-  This is a known HA quirk; will be addressed by custom cards in Phase 2.
+**Mushroom cards look wrong**
+- Mushroom version too old to recognize the latest `--mush-*` tokens. Update via HACS.
 
-## Hosting fonts locally (optional)
+**Cards have white backgrounds inside otherwise-themed surface**
+- Some custom cards bypass `ha-card-background`. Either: switch to the Mushroom equivalent, or wrap the offending card in a `card-mod` style override.
 
-If you'd rather not depend on Google Fonts CDN (privacy, offline use):
+**Shadows clip at the edges of cards**
+- HA's view container clips overflow on some card types. card-mod's `card-mod-view-yaml` block already loosens this; if a specific card still clips, it's a card-internal issue (Phase 2 custom cards will fix).
 
-1. Download the variable-font TTFs:
-   - `DMSans-VariableFont_opsz_wght.ttf` (already in this repo at
-     `public/fonts/`)
+## Hosting fonts locally (optional, privacy)
+
+If you don't want HA hitting Google Fonts:
+
+1. Copy the variable-font TTFs to `config/www/fonts/`:
+   - `DMSans-VariableFont_opsz_wght.ttf` (in this repo at `public/fonts/`)
    - `JetBrainsMono-VariableFont_wght.ttf` (also in `public/fonts/`)
-   - `Outfit-VariableFont_wght.ttf` — download from
-     <https://fonts.google.com/specimen/Outfit>
-2. Copy all three to `config/www/fonts/`.
-3. Replace the contents of `smartmorphic-fonts.js` with `@font-face`
-   declarations pointing at `/local/fonts/<filename>.ttf`. Ask and I can
-   generate the replacement.
+   - `Outfit-VariableFont_wght.ttf` — download from <https://fonts.google.com/specimen/Outfit>
+2. Replace `smartmorphic-fonts.js` with `@font-face` declarations pointing at `/local/fonts/...`. Ask and I'll generate the replacement.
+
+## File layout
+
+```
+ha/
+  themes/
+    smartmorphic.yaml              theme tokens + card-mod CSS
+  www/
+    smartmorphic-fonts.js          font loader (extra_module_url)
+  dashboards/
+    smartmorphic-starter.yaml      template dashboard
+  README.md
+```
 
 ## What's next (Phase 2+)
 
-- Custom Lovelace cards (Lit web components) for room card, light card,
-  scene chip, status pill — replacing HA's built-ins where the neumorphic
-  shape matters most.
-- A starter dashboard YAML that lays out the cards in the Casa Control idiom
-  (home greeting, room grid, status tiles).
-- Eventually: every dashboard surface uses Smartmorphic cards exclusively,
-  no HA built-ins in active flows.
+- **Custom Lovelace cards** (Lit web components) for the highest-traffic surfaces — room card, light card, scene chip, status pill — built directly against the `--smartmorphic-*` tokens.
+- **A more-info redesign** — replace HA's default expanded entity sheet with a custom Lit component.
+- **Energy dashboard restyle** — HA's energy view has its own quirks; needs targeted card-mod.
 
-The custom CSS variables in `themes/smartmorphic.yaml`
-(`--smartmorphic-neu-raised`, etc.) are already in place so Phase 2 cards
-can reference them without redefining the design tokens.
+When you have the theme installed and want to start Phase 2, ping me — first card I'd build is the room card.

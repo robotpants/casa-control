@@ -100,11 +100,13 @@ After install + activation:
 
 If you don't want HA hitting Google Fonts:
 
-1. Copy the variable-font TTFs to `config/www/fonts/`:
-   - `DMSans-VariableFont_opsz_wght.ttf` (in this repo at `public/fonts/`)
-   - `JetBrainsMono-VariableFont_wght.ttf` (also in `public/fonts/`)
-   - `Outfit-VariableFont_wght.ttf` — download from <https://fonts.google.com/specimen/Outfit>
-2. Replace `smartmorphic-fonts.js` with `@font-face` declarations pointing at `/local/fonts/...`. Ask and I'll generate the replacement.
+1. Copy the variable-font TTFs from `ha/www/fonts/` (already bundled in this repo) to your HA `config/www/fonts/`:
+   - `DMSans-VariableFont_opsz_wght.ttf`
+   - `DMSans-Italic-VariableFont_opsz_wght.ttf`
+   - `JetBrainsMono-VariableFont_wght.ttf`
+   - `JetBrainsMono-Italic-VariableFont_wght.ttf`
+2. Download `Outfit-VariableFont_wght.ttf` from <https://fonts.google.com/specimen/Outfit> and add it to `config/www/fonts/` too.
+3. Replace `smartmorphic-fonts.js` with `@font-face` declarations pointing at `/local/fonts/...`. Ask and I'll generate the replacement.
 
 ## File layout
 
@@ -114,6 +116,8 @@ ha/
     smartmorphic.yaml              theme tokens + card-mod CSS
   www/
     smartmorphic-fonts.js          font loader (extra_module_url)
+    fonts/                         bundled variable-font .ttf files
+                                   (only needed if self-hosting fonts)
   dashboards/
     smartmorphic-starter.yaml      template dashboard
   README.md

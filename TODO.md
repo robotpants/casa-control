@@ -1,54 +1,44 @@
 # Casa Control — TODO
 
-## Bugs
-- **Master Bedroom TV Light**: state mismatch (UI shows off when light is on) and can't turn off via toggle. Likely Hue plugin reporting stale state. Console showed no errors. Fire-and-forget toggle didn't fix it. Needs Network-tab inspection of the PUT request.
-- **Pico bundling pulled lights out of Lutron-switch rooms**: when serial-number-based grouping landed, lights driven by Lutron switches (Caseta) seem to have been re-keyed to a different primary uniqueId and the room migration didn't carry them across. Diagnose via the device debug panel — compare a missing light's `sn` / `aid` fields before and after.
+## Theme — Phase 2
 
-## Features
+Custom Lovelace cards (Lit web components) for the highest-traffic surfaces. The `--smartmorphic-*` CSS variables in `ha/themes/smartmorphic.yaml` are already in place for these to consume.
 
-### Ecobee
-- Get API key from ecobee.com/developers
-- Get refresh token via PIN flow
-- Install `homebridge-ecobee-status` (and `homebridge-ecobee3-sensors` if room sensors)
-- Wire into Casa Control rooms (it'll surface automatically once Homebridge sees it; typeMap already includes Thermostat)
-- **Full thermostat UI in Casa Control**: target-temp slider, heat/cool/off mode buttons, away/home toggle. Currently only shows on/off + temp readout via the generic light-card path.
+- **Room card** (highest priority — most visible). Renders a room name, ambient temp, on-count for lights, with a tap_action to navigate to a room detail view. Matches `.room-card` from the legacy CSS (large icon well, active dot with glow, pressed-on look).
+- **Light card** with expandable controls — matches `.light-card` (icon well + name + status + toggle, expandable brightness slider with `.brightness` gradient fill).
+- **Scene chip strip** — horizontal scrollable row of scene buttons. Active chip = pressed-inset + ember text + chip dot glow.
+- **Status pill** — semantic colored pill for inline state badges.
+- **Master row** — full-width "master light" / room-level toggle row.
 
-### Scenes
-- **Scene support**: define + run scenes (e.g., "Movie Night" sets Living Room lights to 20% warm + turns off Office). Open questions: store locally in Casa Control (simple, no Homebridge dependency) vs. integrate with Homebridge scenes/automations (slower to set up but visible across Apple Home / other clients). Likely start local, expose as buttons on the home view.
+## Theme — Phase 3 (polish)
 
-### Matter
-- **Set up a Matter controller on the Pi** — current state: Pi runs no Matter controller (confirmed via `systemctl` and Homebridge logs). Apple Home is the user's only Matter controller. Result: Matter devices (Aqara, future Matter-native gear) are invisible to Casa Control because nothing on the Pi can see them. Three viable paths, ranked:
-  1. **Home Assistant Matter Server in Docker** (most realistic now). `ghcr.io/home-assistant-libs/python-matter-server`. Apple Home shares each Matter device to it via multi-admin. Casa Control would then need a small client to query it (or a Homebridge plugin to bridge it).
-  2. **Homebridge v2 native Matter controller mode** when stable. Cleanest because Casa Control's existing pipeline picks everything up automatically.
-  3. **Casa Control speaks Matter directly** (`@project-chip/matter.js`). Architecturally cleanest, biggest build.
-- Once a controller exists: Matter devices can be added to **both** Apple Home and Casa Control via Matter multi-admin sharing. Each controller gets independent control; nothing is exclusive.
-- Audit existing devices for Matter support (Hue Bridge supports it; Lutron doesn't; Levoit/Dreo don't) so we know which ones could move off plugin bridges once the controller is in place.
+- **More-info dialog redesign** — replace HA's default expanded entity sheet with a custom Lit component (currently card-mod re-shadows it; full replacement gives layout control).
+- **Energy dashboard restyle** — HA's energy view has internal layouts that resist card-mod. Targeted styling pass once we have a routine of using it.
+- **Self-hosted fonts variant of `smartmorphic-fonts.js`** — `@font-face` declarations pointing at `/local/fonts/` instead of Google Fonts CDN.
 
-### Aqara
-- **Patch `homebridge-plugin-aqara` for Homebridge v2 compatibility.** Plugin (v0.1.0 by @baranwang) fails to load with `Package subpath './lib/logger' is not defined by "exports"` — uses HB v1 internal API paths that v2 removed. Plan: fork the repo, replace internal imports with the public homebridge API (logger comes in via the platform constructor), install the patched version locally, send PR upstream. Estimate 30 min – 2 hr depending on how many internal imports there are. If it cascades, fall back to the Zigbee2MQTT route ($25 USB stick + homebridge-z2m).
+## HA setup follow-ups
 
-### Infra
-- **Upgrade Node.js to v24 LTS** on the Pi to match Homebridge v2's recommendation. Currently v22.20.0 works fine but Homebridge logs a warning. Run `sudo hb-service update-node` then reboot. Do it on a quiet day in case a plugin misbehaves on the new major.
+- **HACS install** if not already done — required for card-mod + Mushroom.
+- **Install card-mod and Mushroom** via HACS. Without these the theme works at ~60% fidelity; with them ~90%.
+- **Apply the starter dashboard** (`ha/dashboards/smartmorphic-starter.yaml`) and replace `REPLACE_ME` entity IDs.
+- **HomeKit Bridge integration** — if exposing HA back to Apple Home: enable in Settings → Devices & Services → Add Integration → HomeKit Bridge. Pair on iPhone via Home app.
 
-### HomeKit ↔ Casa Control sync (deferred)
-- HomeKit rooms live on Apple devices, not in Homebridge. Casa Control would need to be a HAP controller (read pairings, query rooms) to sync. Significant project — only worth it if maintaining rooms in two places becomes painful.
+## Migration cleanup
 
-### Home Assistant migration path (opportunistic)
-- **Why this is on the radar:** Homebridge's plugin ecosystem is volunteer-run and thin in places. Plugins for niche devices (current pain: `homebridge-plugin-aqara` broken on HB v2, author MIA) tend to rot. HA has ~1,300 first-party core integrations, paid maintainers via Nabu Casa, and HACS as a fallback for the long tail. For sustainability over 5+ years, HA's integration layer is the safer bet.
-- **Strategy:** don't migrate, *coexist*. HA runs alongside Homebridge on the Pi (or in Docker). The iOS app still consumes only HomeKit, so the swap is invisible to it.
-- **Architecture once both are running:**
-  - HA's `HomeKit Bridge` integration exposes HA entities as HomeKit accessories.
-  - Devices stay on whichever bridge handles them better.
-  - Casa Control sees a unified HomeKit world; doesn't know or care which bridge a device came from.
-- **Migration triggers (move a device when one of these hits):**
-  1. Its Homebridge plugin breaks and the author isn't responsive (Aqara today).
-  2. HA has a clearly better integration (more entities exposed, better state modeling).
-  3. The device is Matter-native and Homebridge v2 native Matter isn't ready yet (covered by the Matter section above).
-- **Setup steps (when ready):**
-  1. Install HA OS or HA Container on the Pi. HA Container (Docker) is lightest — `ghcr.io/home-assistant/home-assistant:stable`.
-  2. Add integrations for the devices being migrated.
-  3. Enable HA's `HomeKit Bridge` integration → pair it to Apple Home (separate pairing from Homebridge — they're two distinct HomeKit bridges).
-  4. Remove the corresponding Homebridge plugin so the same device isn't double-bridged.
-  5. Verify in Casa Control that the device still appears and works.
-- **What stays on Homebridge indefinitely:** HomeKit-flavored stuff where Homebridge's ecosystem is stronger — HKSV camera plugins, Pico-remote scene exposure, Shortcuts trigger fakes, anything where the plugin was clearly written by/for HomeKit users.
-- **What this unlocks beyond plugin sustainability:** HA's recorder gives free historical data (sensor history, energy graphs) — could replace the "build our own logger" item if we ever want history features in Casa Control. HA also gets us a real automation engine for server-side rules that don't depend on the phone being home.
+- **Confirm Apple Home rooms re-assigned** after the Homebridge → HA cutover (all accessories show under correct rooms; scenes/automations migrated).
+- **Decommission old Homebridge install** on the Pi once HA has run clean for a week (`sudo hb-service uninstall` if still installed).
+
+## Deferred / nice-to-have
+
+- **Spotify card / dashboard surface** — HA has a built-in Spotify integration and a `media_player` card. Replaces what the iOS app would have done. Worth adding to the dashboard once the theme is live.
+- **Per-room detail views** — duplicate the "Living Room" view in the starter dashboard for each room with its own entity set.
+- **Mobile-first dashboard** — Mushroom is responsive but the `max_columns: 3` setting in the starter is desktop-oriented. Consider a separate `casa-mobile` dashboard if the experience differs enough.
+
+---
+
+## Archived branches
+
+Reference state preserved on long-lived branches; not actively maintained.
+
+- `archive/web-app-pre-ios` — original Node/Express + Homebridge web app, pre-iOS-pivot state.
+- `archive/ios-homekit-app` — native SwiftUI HomeKit app + Spotify + Homebridge admin client (pre-HA-pivot state). Includes `ios/SETUP.md` walkthrough.

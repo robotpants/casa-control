@@ -281,6 +281,7 @@ Smartmorphic:
         .: |
           ha-card {
             transition: box-shadow 0.25s cubic-bezier(0.25,0.46,0.45,0.94);
+            border-radius: var(--smartmorphic-radius) !important;
           }
           /* Inner pressed wells for icon containers */
           ha-card .icon, ha-card state-badge {
@@ -296,6 +297,31 @@ Smartmorphic:
             box-shadow:
               var(--smartmorphic-neu-pressed-sm),
               0 0 12px var(--smartmorphic-accent-glow);
+          }
+          /* Tile card stat text uses Outfit display weight */
+          hui-tile-card .primary,
+          ha-tile-info .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.2px;
+          }
+          hui-tile-card .secondary,
+          ha-tile-info .secondary {
+            font-weight: 500 !important;
+          }
+          /* Tile card icons: soft accent glow + tighter transition */
+          hui-tile-card ha-tile-icon {
+            transition: filter 0.25s ease-out, transform 0.15s ease-out;
+            filter: drop-shadow(0 0 8px var(--smartmorphic-accent-glow));
+          }
+          hui-tile-card:active ha-tile-icon {
+            transform: scale(0.95);
+          }
+          /* Mushroom cards: match stat font */
+          mushroom-state-info .primary,
+          mushroom-card .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
           }
           /* Soft dividers inside entities cards */
           ha-card hui-entities-toggle,
@@ -580,6 +606,7 @@ Smartmorphic:
         .: |
           ha-card {
             transition: box-shadow 0.25s cubic-bezier(0.25,0.46,0.45,0.94);
+            border-radius: var(--smartmorphic-radius) !important;
           }
           ha-card .icon, ha-card state-badge {
             border-radius: 12px;
@@ -594,6 +621,31 @@ Smartmorphic:
             box-shadow:
               var(--smartmorphic-neu-pressed-sm),
               0 0 12px var(--smartmorphic-accent-glow);
+          }
+          /* Tile card stat text uses Outfit display weight */
+          hui-tile-card .primary,
+          ha-tile-info .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.2px;
+          }
+          hui-tile-card .secondary,
+          ha-tile-info .secondary {
+            font-weight: 500 !important;
+          }
+          /* Tile card icons: brighter accent glow on dark surface */
+          hui-tile-card ha-tile-icon {
+            transition: filter 0.25s ease-out, transform 0.15s ease-out;
+            filter: drop-shadow(0 0 10px var(--smartmorphic-accent-glow-tight));
+          }
+          hui-tile-card:active ha-tile-icon {
+            transform: scale(0.95);
+          }
+          /* Mushroom cards: match stat font */
+          mushroom-state-info .primary,
+          mushroom-card .primary {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif !important;
+            font-weight: 500 !important;
           }
           ha-card hui-entities-toggle,
           ha-card .divider, ha-card hr {
